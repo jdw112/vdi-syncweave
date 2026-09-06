@@ -1,0 +1,334 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Call/Reply Mode Hook Flow",
+    "quality_profile": "standard",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "backend": {
+          "label": "Hook"
+        },
+        "messagebus": {
+          "label": "Override hook"
+        },
+        "database": {
+          "label": "Attribute map"
+        },
+        "security": {
+          "label": "Fail / error hook"
+        },
+        "external": {
+          "label": "Terminal / no-change"
+        }
+      }
+    },
+    "output": "docs/hook-flow/callreply.html",
+    "subtitle": "Hooks from HookTree.callreplyLoop"
+  },
+  "lanes": [
+    {
+      "id": "prolog",
+      "label": "Prolog / Initialize"
+    },
+    {
+      "id": "flow",
+      "label": "Data Flow - Call / Reply"
+    },
+    {
+      "id": "result",
+      "label": "Data Flow - Result"
+    },
+    {
+      "id": "epilog",
+      "label": "Epilog / Close"
+    },
+    {
+      "id": "errors",
+      "label": "Errors & Reconnect",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "init",
+      "label": "Initialize",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "loop",
+      "label": "Call/Reply loop",
+      "fromCol": 2,
+      "toCol": 5,
+      "variant": "emphasis"
+    }
+  ],
+  "mainPath": [
+    "before_execute",
+    "override_callreply",
+    "output_attribute_map",
+    "before_call",
+    "after_reply",
+    "input_attribute_map"
+  ],
+  "nodes": [
+    {
+      "id": "before_initialize",
+      "lane": "prolog",
+      "col": 0,
+      "type": "backend",
+      "label": "before_initialize",
+      "width": 202
+    },
+    {
+      "id": "after_initialize",
+      "lane": "prolog",
+      "col": 1,
+      "type": "backend",
+      "label": "after_initialize",
+      "width": 192
+    },
+    {
+      "id": "before_execute",
+      "lane": "flow",
+      "col": 0,
+      "type": "backend",
+      "label": "before_execute",
+      "width": 173,
+      "sublabel": "each cycle"
+    },
+    {
+      "id": "override_callreply",
+      "lane": "flow",
+      "col": 1,
+      "type": "messagebus",
+      "label": "override_callreply",
+      "width": 211,
+      "sublabel": "override"
+    },
+    {
+      "id": "output_attribute_map",
+      "lane": "flow",
+      "col": 2,
+      "type": "database",
+      "label": "output_attribute_map",
+      "width": 230,
+      "sublabel": "build call"
+    },
+    {
+      "id": "before_call",
+      "lane": "flow",
+      "col": 3,
+      "type": "backend",
+      "label": "before_call",
+      "width": 154,
+      "sublabel": "send request"
+    },
+    {
+      "id": "after_reply",
+      "lane": "flow",
+      "col": 4,
+      "type": "backend",
+      "label": "after_reply",
+      "width": 150,
+      "sublabel": "response in"
+    },
+    {
+      "id": "input_attribute_map",
+      "lane": "flow",
+      "col": 5,
+      "type": "database",
+      "label": "input_attribute_map",
+      "width": 221,
+      "sublabel": "map reply"
+    },
+    {
+      "id": "callreply_ok",
+      "lane": "result",
+      "col": 4,
+      "type": "backend",
+      "label": "callreply_ok",
+      "width": 154
+    },
+    {
+      "id": "default_ok",
+      "lane": "result",
+      "col": 5,
+      "type": "backend",
+      "label": "default_ok",
+      "width": 150,
+      "sublabel": "next cycle"
+    },
+    {
+      "id": "initialize_fail",
+      "lane": "prolog",
+      "col": 2,
+      "type": "security",
+      "label": "initialize_fail",
+      "width": 183
+    },
+    {
+      "id": "no_reply",
+      "lane": "errors",
+      "col": 2,
+      "type": "external",
+      "label": "no_reply",
+      "width": 150,
+      "sublabel": "no response"
+    },
+    {
+      "id": "callreply_fail",
+      "lane": "errors",
+      "col": 3,
+      "type": "security",
+      "label": "callreply_fail",
+      "width": 173
+    },
+    {
+      "id": "default_fail",
+      "lane": "errors",
+      "col": 4,
+      "type": "security",
+      "label": "default_fail",
+      "width": 154
+    },
+    {
+      "id": "close_fail",
+      "lane": "errors",
+      "col": 5,
+      "type": "security",
+      "label": "close_fail",
+      "width": 150
+    },
+    {
+      "id": "reconnect",
+      "lane": "errors",
+      "col": 1,
+      "type": "security",
+      "label": "Reconnect flow",
+      "width": 183,
+      "sublabel": "on conn failure",
+      "tag": "shared"
+    },
+    {
+      "id": "before_close",
+      "lane": "epilog",
+      "col": 4,
+      "type": "backend",
+      "label": "before_close",
+      "width": 154
+    },
+    {
+      "id": "after_close",
+      "lane": "epilog",
+      "col": 5,
+      "type": "backend",
+      "label": "after_close",
+      "width": 150
+    }
+  ],
+  "edges": [
+    {
+      "from": "before_initialize",
+      "to": "after_initialize",
+      "variant": "default"
+    },
+    {
+      "from": "after_initialize",
+      "to": "before_execute",
+      "variant": "emphasis",
+      "label": "enter loop"
+    },
+    {
+      "from": "before_execute",
+      "to": "override_callreply",
+      "variant": "default"
+    },
+    {
+      "from": "override_callreply",
+      "to": "output_attribute_map",
+      "variant": "default"
+    },
+    {
+      "from": "output_attribute_map",
+      "to": "before_call",
+      "variant": "default"
+    },
+    {
+      "from": "before_call",
+      "to": "after_reply",
+      "variant": "emphasis",
+      "label": "call / reply"
+    },
+    {
+      "from": "after_reply",
+      "to": "input_attribute_map",
+      "variant": "default"
+    },
+    {
+      "from": "input_attribute_map",
+      "to": "callreply_ok",
+      "variant": "default"
+    },
+    {
+      "from": "callreply_ok",
+      "to": "default_ok",
+      "variant": "default"
+    },
+    {
+      "from": "default_ok",
+      "to": "before_execute",
+      "variant": "dashed",
+      "label": "next cycle",
+      "role": "return"
+    },
+    {
+      "from": "before_call",
+      "to": "no_reply",
+      "variant": "dashed",
+      "label": "no reply",
+      "role": "branch"
+    },
+    {
+      "from": "callreply_ok",
+      "to": "callreply_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "callreply_fail",
+      "to": "default_fail",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "before_initialize",
+      "to": "initialize_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "default_ok",
+      "to": "before_close",
+      "variant": "dashed",
+      "label": "on close",
+      "role": "branch"
+    },
+    {
+      "from": "before_close",
+      "to": "after_close",
+      "variant": "default"
+    },
+    {
+      "from": "after_close",
+      "to": "close_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    }
+  ]
+}

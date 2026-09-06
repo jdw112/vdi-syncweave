@@ -1,0 +1,335 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Iterator Mode Hook Flow",
+    "quality_profile": "standard",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "backend": {
+          "label": "Hook"
+        },
+        "messagebus": {
+          "label": "Override hook"
+        },
+        "database": {
+          "label": "Attribute map"
+        },
+        "security": {
+          "label": "Fail / error hook"
+        },
+        "external": {
+          "label": "Terminal / no-change"
+        }
+      }
+    },
+    "output": "docs/hook-flow/iterator.html",
+    "subtitle": "Hooks from HookTree.iteratorMode"
+  },
+  "lanes": [
+    {
+      "id": "prolog",
+      "label": "Prolog / Initialize"
+    },
+    {
+      "id": "flow",
+      "label": "Data Flow - Get Next"
+    },
+    {
+      "id": "epilog",
+      "label": "Epilog / Close"
+    },
+    {
+      "id": "errors",
+      "label": "Errors & Reconnect",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "init",
+      "label": "Initialize",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "loop",
+      "label": "Iterator loop",
+      "fromCol": 2,
+      "toCol": 4,
+      "variant": "emphasis"
+    },
+    {
+      "id": "close",
+      "label": "Close",
+      "fromCol": 5,
+      "toCol": 5
+    }
+  ],
+  "mainPath": [
+    "before_execute",
+    "override_getnext",
+    "getnext",
+    "input_attribute_map",
+    "get_ok",
+    "default_ok"
+  ],
+  "nodes": [
+    {
+      "id": "before_initialize",
+      "lane": "prolog",
+      "col": 0,
+      "type": "backend",
+      "label": "before_initialize",
+      "width": 166
+    },
+    {
+      "id": "before_selectEntries",
+      "lane": "prolog",
+      "col": 1,
+      "type": "backend",
+      "label": "before_selectEntries",
+      "width": 189,
+      "sublabel": "iterator only"
+    },
+    {
+      "id": "after_selectEntries",
+      "lane": "prolog",
+      "col": 2,
+      "type": "backend",
+      "label": "after_selectEntries",
+      "width": 181
+    },
+    {
+      "id": "after_initialize",
+      "lane": "prolog",
+      "col": 3,
+      "type": "backend",
+      "label": "after_initialize",
+      "width": 159
+    },
+    {
+      "id": "before_execute",
+      "lane": "flow",
+      "col": 0,
+      "type": "backend",
+      "label": "before_execute",
+      "width": 150,
+      "sublabel": "each cycle"
+    },
+    {
+      "id": "override_getnext",
+      "lane": "flow",
+      "col": 1,
+      "type": "messagebus",
+      "label": "override_getnext",
+      "width": 159,
+      "sublabel": "override read"
+    },
+    {
+      "id": "getnext",
+      "lane": "flow",
+      "col": 2,
+      "type": "backend",
+      "label": "getnext",
+      "width": 204,
+      "sublabel": "before / after_getnext"
+    },
+    {
+      "id": "input_attribute_map",
+      "lane": "flow",
+      "col": 3,
+      "type": "database",
+      "label": "input_attribute_map",
+      "width": 181,
+      "sublabel": "map entry"
+    },
+    {
+      "id": "get_ok",
+      "lane": "flow",
+      "col": 4,
+      "type": "backend",
+      "label": "get_ok",
+      "width": 150
+    },
+    {
+      "id": "default_ok",
+      "lane": "flow",
+      "col": 5,
+      "type": "backend",
+      "label": "default_ok",
+      "width": 150,
+      "sublabel": "next cycle"
+    },
+    {
+      "id": "before_close",
+      "lane": "epilog",
+      "col": 4,
+      "type": "backend",
+      "label": "before_close",
+      "width": 150
+    },
+    {
+      "id": "after_close",
+      "lane": "epilog",
+      "col": 5,
+      "type": "backend",
+      "label": "after_close",
+      "width": 150
+    },
+    {
+      "id": "initialize_fail",
+      "lane": "errors",
+      "col": 0,
+      "type": "security",
+      "label": "initialize_fail",
+      "width": 152
+    },
+    {
+      "id": "reconnect",
+      "lane": "errors",
+      "col": 1,
+      "type": "security",
+      "label": "Reconnect flow",
+      "width": 152,
+      "sublabel": "on conn failure",
+      "tag": "shared"
+    },
+    {
+      "id": "end_of_data",
+      "lane": "errors",
+      "col": 2,
+      "type": "external",
+      "label": "end_of_data",
+      "width": 152,
+      "sublabel": "no more entries"
+    },
+    {
+      "id": "get_fail",
+      "lane": "errors",
+      "col": 3,
+      "type": "security",
+      "label": "get_fail",
+      "width": 150
+    },
+    {
+      "id": "default_fail",
+      "lane": "errors",
+      "col": 4,
+      "type": "security",
+      "label": "default_fail",
+      "width": 150
+    },
+    {
+      "id": "close_fail",
+      "lane": "errors",
+      "col": 5,
+      "type": "security",
+      "label": "close_fail",
+      "width": 150
+    }
+  ],
+  "edges": [
+    {
+      "from": "before_initialize",
+      "to": "before_selectEntries",
+      "variant": "default"
+    },
+    {
+      "from": "before_selectEntries",
+      "to": "after_selectEntries",
+      "variant": "default"
+    },
+    {
+      "from": "after_selectEntries",
+      "to": "after_initialize",
+      "variant": "default"
+    },
+    {
+      "from": "after_initialize",
+      "to": "before_execute",
+      "variant": "emphasis",
+      "label": "enter loop"
+    },
+    {
+      "from": "before_execute",
+      "to": "override_getnext",
+      "variant": "default"
+    },
+    {
+      "from": "override_getnext",
+      "to": "getnext",
+      "variant": "default"
+    },
+    {
+      "from": "getnext",
+      "to": "input_attribute_map",
+      "variant": "default"
+    },
+    {
+      "from": "input_attribute_map",
+      "to": "get_ok",
+      "variant": "emphasis",
+      "label": "entry"
+    },
+    {
+      "from": "get_ok",
+      "to": "default_ok",
+      "variant": "default"
+    },
+    {
+      "from": "default_ok",
+      "to": "before_execute",
+      "variant": "dashed",
+      "label": "next cycle",
+      "role": "return"
+    },
+    {
+      "from": "getnext",
+      "to": "end_of_data",
+      "variant": "dashed",
+      "label": "no entry",
+      "role": "branch"
+    },
+    {
+      "from": "end_of_data",
+      "to": "before_close",
+      "variant": "emphasis",
+      "label": "exit loop",
+      "role": "branch"
+    },
+    {
+      "from": "get_ok",
+      "to": "get_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "get_fail",
+      "to": "default_fail",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "before_initialize",
+      "to": "initialize_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "before_close",
+      "to": "after_close",
+      "variant": "default"
+    },
+    {
+      "from": "after_close",
+      "to": "close_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    }
+  ]
+}

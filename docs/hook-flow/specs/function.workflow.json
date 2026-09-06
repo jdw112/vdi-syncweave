@@ -1,0 +1,301 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Function Component Hook Flow",
+    "quality_profile": "standard",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "backend": {
+          "label": "Hook"
+        },
+        "messagebus": {
+          "label": "Override hook"
+        },
+        "database": {
+          "label": "Attribute map"
+        },
+        "security": {
+          "label": "Fail / error hook"
+        },
+        "external": {
+          "label": "Terminal / no-change"
+        }
+      }
+    },
+    "output": "docs/hook-flow/function.html",
+    "subtitle": "Hooks from HookTree.functionLoop"
+  },
+  "lanes": [
+    {
+      "id": "prolog",
+      "label": "Prolog / Initialize"
+    },
+    {
+      "id": "flow",
+      "label": "Data Flow - Function call"
+    },
+    {
+      "id": "result",
+      "label": "Result"
+    },
+    {
+      "id": "epilog",
+      "label": "Epilog / Close"
+    },
+    {
+      "id": "errors",
+      "label": "Errors & Reconnect",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "init",
+      "label": "Initialize",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "call",
+      "label": "Function call",
+      "fromCol": 2,
+      "toCol": 5,
+      "variant": "emphasis"
+    }
+  ],
+  "mainPath": [
+    "before_execute",
+    "output_attribute_map",
+    "before_functioncall",
+    "after_functioncall",
+    "input_attribute_map",
+    "functioncall_ok"
+  ],
+  "nodes": [
+    {
+      "id": "before_initialize",
+      "lane": "prolog",
+      "col": 0,
+      "type": "backend",
+      "label": "before_initialize",
+      "width": 202
+    },
+    {
+      "id": "after_initialize",
+      "lane": "prolog",
+      "col": 1,
+      "type": "backend",
+      "label": "after_initialize",
+      "width": 192
+    },
+    {
+      "id": "before_execute",
+      "lane": "flow",
+      "col": 0,
+      "type": "backend",
+      "label": "before_execute",
+      "width": 173,
+      "sublabel": "each call"
+    },
+    {
+      "id": "output_attribute_map",
+      "lane": "flow",
+      "col": 1,
+      "type": "database",
+      "label": "output_attribute_map",
+      "width": 230,
+      "sublabel": "build input"
+    },
+    {
+      "id": "before_functioncall",
+      "lane": "flow",
+      "col": 2,
+      "type": "backend",
+      "label": "before_functioncall",
+      "width": 221
+    },
+    {
+      "id": "after_functioncall",
+      "lane": "flow",
+      "col": 3,
+      "type": "backend",
+      "label": "after_functioncall",
+      "width": 211
+    },
+    {
+      "id": "input_attribute_map",
+      "lane": "flow",
+      "col": 4,
+      "type": "database",
+      "label": "input_attribute_map",
+      "width": 221,
+      "sublabel": "map output"
+    },
+    {
+      "id": "functioncall_ok",
+      "lane": "flow",
+      "col": 5,
+      "type": "backend",
+      "label": "functioncall_ok",
+      "width": 183
+    },
+    {
+      "id": "default_ok",
+      "lane": "result",
+      "col": 5,
+      "type": "backend",
+      "label": "default_ok",
+      "width": 150,
+      "sublabel": "done"
+    },
+    {
+      "id": "initialize_fail",
+      "lane": "prolog",
+      "col": 2,
+      "type": "security",
+      "label": "initialize_fail",
+      "width": 183
+    },
+    {
+      "id": "no_reply",
+      "lane": "errors",
+      "col": 2,
+      "type": "external",
+      "label": "no_reply",
+      "width": 150,
+      "sublabel": "no output"
+    },
+    {
+      "id": "functioncall_fail",
+      "lane": "errors",
+      "col": 3,
+      "type": "security",
+      "label": "functioncall_fail",
+      "width": 202
+    },
+    {
+      "id": "default_fail",
+      "lane": "errors",
+      "col": 4,
+      "type": "security",
+      "label": "default_fail",
+      "width": 154
+    },
+    {
+      "id": "close_fail",
+      "lane": "errors",
+      "col": 5,
+      "type": "security",
+      "label": "close_fail",
+      "width": 150
+    },
+    {
+      "id": "before_close",
+      "lane": "epilog",
+      "col": 4,
+      "type": "backend",
+      "label": "before_close",
+      "width": 154
+    },
+    {
+      "id": "after_close",
+      "lane": "epilog",
+      "col": 5,
+      "type": "backend",
+      "label": "after_close",
+      "width": 150
+    }
+  ],
+  "edges": [
+    {
+      "from": "before_initialize",
+      "to": "after_initialize",
+      "variant": "default"
+    },
+    {
+      "from": "after_initialize",
+      "to": "before_execute",
+      "variant": "emphasis",
+      "label": "call"
+    },
+    {
+      "from": "before_execute",
+      "to": "output_attribute_map",
+      "variant": "default"
+    },
+    {
+      "from": "output_attribute_map",
+      "to": "before_functioncall",
+      "variant": "default"
+    },
+    {
+      "from": "before_functioncall",
+      "to": "after_functioncall",
+      "variant": "emphasis",
+      "label": "invoke"
+    },
+    {
+      "from": "after_functioncall",
+      "to": "input_attribute_map",
+      "variant": "default"
+    },
+    {
+      "from": "input_attribute_map",
+      "to": "functioncall_ok",
+      "variant": "default"
+    },
+    {
+      "from": "functioncall_ok",
+      "to": "default_ok",
+      "variant": "default"
+    },
+    {
+      "from": "before_functioncall",
+      "to": "no_reply",
+      "variant": "dashed",
+      "label": "no output",
+      "role": "branch"
+    },
+    {
+      "from": "functioncall_ok",
+      "to": "functioncall_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "functioncall_fail",
+      "to": "default_fail",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "before_initialize",
+      "to": "initialize_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "default_ok",
+      "to": "before_close",
+      "variant": "dashed",
+      "label": "on close",
+      "role": "branch"
+    },
+    {
+      "from": "before_close",
+      "to": "after_close",
+      "variant": "default"
+    },
+    {
+      "from": "after_close",
+      "to": "close_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    }
+  ]
+}

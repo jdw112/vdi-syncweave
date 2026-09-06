@@ -1,0 +1,455 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Delta Mode Hook Flow",
+    "quality_profile": "standard",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "backend": {
+          "label": "Hook"
+        },
+        "messagebus": {
+          "label": "Override hook"
+        },
+        "database": {
+          "label": "Attribute map"
+        },
+        "security": {
+          "label": "Fail / error hook"
+        },
+        "external": {
+          "label": "Terminal / no-change"
+        }
+      }
+    },
+    "output": "docs/hook-flow/delta.html",
+    "subtitle": "Hooks from HookTree.deltaLoop"
+  },
+  "lanes": [
+    {
+      "id": "prolog",
+      "label": "Prolog / Initialize"
+    },
+    {
+      "id": "flow",
+      "label": "Data Flow - Delta"
+    },
+    {
+      "id": "modify",
+      "label": "Modify branch"
+    },
+    {
+      "id": "add",
+      "label": "Add branch"
+    },
+    {
+      "id": "delete",
+      "label": "Delete branch"
+    },
+    {
+      "id": "result",
+      "label": "Result / Close"
+    },
+    {
+      "id": "errors",
+      "label": "Errors & Reconnect",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "init",
+      "label": "Initialize",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "loop",
+      "label": "Delta loop",
+      "fromCol": 2,
+      "toCol": 5,
+      "variant": "emphasis"
+    }
+  ],
+  "mainPath": [
+    "before_execute",
+    "before_delta",
+    "override_delta",
+    "before_lookup",
+    "after_lookup"
+  ],
+  "nodes": [
+    {
+      "id": "before_initialize",
+      "lane": "prolog",
+      "col": 0,
+      "type": "backend",
+      "label": "before_initialize",
+      "width": 202
+    },
+    {
+      "id": "after_initialize",
+      "lane": "prolog",
+      "col": 1,
+      "type": "backend",
+      "label": "after_initialize",
+      "width": 192
+    },
+    {
+      "id": "before_execute",
+      "lane": "flow",
+      "col": 0,
+      "type": "backend",
+      "label": "before_execute",
+      "width": 173,
+      "sublabel": "each cycle"
+    },
+    {
+      "id": "before_delta",
+      "lane": "flow",
+      "col": 1,
+      "type": "backend",
+      "label": "before_delta",
+      "width": 154
+    },
+    {
+      "id": "override_delta",
+      "lane": "flow",
+      "col": 2,
+      "type": "messagebus",
+      "label": "override_delta",
+      "width": 173,
+      "sublabel": "override"
+    },
+    {
+      "id": "before_lookup",
+      "lane": "flow",
+      "col": 3,
+      "type": "backend",
+      "label": "before_lookup",
+      "width": 164
+    },
+    {
+      "id": "after_lookup",
+      "lane": "flow",
+      "col": 4,
+      "type": "backend",
+      "label": "after_lookup",
+      "width": 154
+    },
+    {
+      "id": "after_delta",
+      "lane": "flow",
+      "col": 5,
+      "type": "backend",
+      "label": "after_delta",
+      "width": 150
+    },
+    {
+      "id": "before_modify",
+      "lane": "modify",
+      "col": 3,
+      "type": "backend",
+      "label": "before_modify",
+      "width": 164,
+      "sublabel": "changed"
+    },
+    {
+      "id": "after_modify",
+      "lane": "modify",
+      "col": 4,
+      "type": "backend",
+      "label": "after_modify",
+      "width": 154
+    },
+    {
+      "id": "before_add",
+      "lane": "add",
+      "col": 3,
+      "type": "backend",
+      "label": "before_add",
+      "width": 150,
+      "sublabel": "new"
+    },
+    {
+      "id": "after_add",
+      "lane": "add",
+      "col": 4,
+      "type": "backend",
+      "label": "after_add",
+      "width": 150
+    },
+    {
+      "id": "before_delete",
+      "lane": "delete",
+      "col": 3,
+      "type": "backend",
+      "label": "before_delete",
+      "width": 164,
+      "sublabel": "removed"
+    },
+    {
+      "id": "after_delete",
+      "lane": "delete",
+      "col": 4,
+      "type": "backend",
+      "label": "after_delete",
+      "width": 154
+    },
+    {
+      "id": "delta_ok",
+      "lane": "result",
+      "col": 0,
+      "type": "backend",
+      "label": "delta_ok",
+      "width": 150
+    },
+    {
+      "id": "default_ok",
+      "lane": "result",
+      "col": 1,
+      "type": "backend",
+      "label": "default_ok",
+      "width": 150,
+      "sublabel": "next cycle"
+    },
+    {
+      "id": "initialize_fail",
+      "lane": "prolog",
+      "col": 2,
+      "type": "security",
+      "label": "initialize_fail",
+      "width": 183
+    },
+    {
+      "id": "lookup_multiple",
+      "lane": "errors",
+      "col": 2,
+      "type": "external",
+      "label": "lookup_multiple",
+      "width": 183,
+      "sublabel": "many"
+    },
+    {
+      "id": "lookup_nomatch",
+      "lane": "errors",
+      "col": 3,
+      "type": "external",
+      "label": "lookup_nomatch",
+      "width": 173,
+      "sublabel": "none"
+    },
+    {
+      "id": "modify_nochange",
+      "lane": "errors",
+      "col": 4,
+      "type": "external",
+      "label": "modify_nochange",
+      "width": 183,
+      "sublabel": "no delta"
+    },
+    {
+      "id": "delta_fail",
+      "lane": "errors",
+      "col": 1,
+      "type": "security",
+      "label": "delta_fail",
+      "width": 150
+    },
+    {
+      "id": "default_fail",
+      "lane": "errors",
+      "col": 5,
+      "type": "security",
+      "label": "default_fail",
+      "width": 154
+    },
+    {
+      "id": "close_fail",
+      "lane": "result",
+      "col": 4,
+      "type": "security",
+      "label": "close_fail",
+      "width": 150
+    },
+    {
+      "id": "before_close",
+      "lane": "result",
+      "col": 2,
+      "type": "backend",
+      "label": "before_close",
+      "width": 154
+    },
+    {
+      "id": "after_close",
+      "lane": "result",
+      "col": 3,
+      "type": "backend",
+      "label": "after_close",
+      "width": 150
+    }
+  ],
+  "edges": [
+    {
+      "from": "before_initialize",
+      "to": "after_initialize",
+      "variant": "default"
+    },
+    {
+      "from": "after_initialize",
+      "to": "before_execute",
+      "variant": "emphasis",
+      "label": "enter loop"
+    },
+    {
+      "from": "before_execute",
+      "to": "before_delta",
+      "variant": "default"
+    },
+    {
+      "from": "before_delta",
+      "to": "override_delta",
+      "variant": "default"
+    },
+    {
+      "from": "override_delta",
+      "to": "before_lookup",
+      "variant": "default"
+    },
+    {
+      "from": "before_lookup",
+      "to": "after_lookup",
+      "variant": "default"
+    },
+    {
+      "from": "after_lookup",
+      "to": "before_modify",
+      "variant": "emphasis",
+      "label": "modify",
+      "role": "branch"
+    },
+    {
+      "from": "before_modify",
+      "to": "after_modify",
+      "variant": "default"
+    },
+    {
+      "from": "after_modify",
+      "to": "after_delta",
+      "variant": "default"
+    },
+    {
+      "from": "after_lookup",
+      "to": "before_add",
+      "variant": "dashed",
+      "label": "add",
+      "role": "branch"
+    },
+    {
+      "from": "before_add",
+      "to": "after_add",
+      "variant": "default"
+    },
+    {
+      "from": "after_add",
+      "to": "after_delta",
+      "variant": "default"
+    },
+    {
+      "from": "after_lookup",
+      "to": "before_delete",
+      "variant": "dashed",
+      "label": "delete",
+      "role": "branch"
+    },
+    {
+      "from": "before_delete",
+      "to": "after_delete",
+      "variant": "default"
+    },
+    {
+      "from": "after_delete",
+      "to": "after_delta",
+      "variant": "default"
+    },
+    {
+      "from": "after_delta",
+      "to": "delta_ok",
+      "variant": "default"
+    },
+    {
+      "from": "delta_ok",
+      "to": "default_ok",
+      "variant": "default"
+    },
+    {
+      "from": "default_ok",
+      "to": "before_execute",
+      "variant": "dashed",
+      "label": "next cycle",
+      "role": "return"
+    },
+    {
+      "from": "before_lookup",
+      "to": "lookup_multiple",
+      "variant": "dashed",
+      "label": "many",
+      "role": "branch"
+    },
+    {
+      "from": "before_lookup",
+      "to": "lookup_nomatch",
+      "variant": "dashed",
+      "label": "none",
+      "role": "branch"
+    },
+    {
+      "from": "before_modify",
+      "to": "modify_nochange",
+      "variant": "dashed",
+      "label": "no delta",
+      "role": "branch"
+    },
+    {
+      "from": "delta_ok",
+      "to": "delta_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "delta_fail",
+      "to": "default_fail",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "before_initialize",
+      "to": "initialize_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "default_ok",
+      "to": "before_close",
+      "variant": "dashed",
+      "label": "on close",
+      "role": "branch"
+    },
+    {
+      "from": "before_close",
+      "to": "after_close",
+      "variant": "default"
+    },
+    {
+      "from": "after_close",
+      "to": "close_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    }
+  ]
+}

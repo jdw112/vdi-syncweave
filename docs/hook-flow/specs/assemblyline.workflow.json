@@ -1,0 +1,208 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "AssemblyLine Hook Flow",
+    "quality_profile": "standard",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "backend": {
+          "label": "Hook"
+        },
+        "messagebus": {
+          "label": "Override hook"
+        },
+        "database": {
+          "label": "Attribute map"
+        },
+        "security": {
+          "label": "Fail / error hook"
+        },
+        "external": {
+          "label": "Terminal / no-change"
+        }
+      }
+    },
+    "output": "docs/hook-flow/assemblyline.html",
+    "subtitle": "Hooks from HookTree.mainAssemblyLine"
+  },
+  "lanes": [
+    {
+      "id": "al",
+      "label": "AssemblyLine lifecycle"
+    },
+    {
+      "id": "term",
+      "label": "Result & shutdown",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "prologp",
+      "label": "Prolog",
+      "fromCol": 0,
+      "toCol": 2
+    },
+    {
+      "id": "flowp",
+      "label": "Flow",
+      "fromCol": 3,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "epilogp",
+      "label": "Epilog",
+      "fromCol": 4,
+      "toCol": 5
+    }
+  ],
+  "mainPath": [
+    "prolog_init",
+    "prolog",
+    "startcycle",
+    "flow",
+    "epilog",
+    "epilog2"
+  ],
+  "nodes": [
+    {
+      "id": "prolog_init",
+      "lane": "al",
+      "col": 0,
+      "type": "backend",
+      "label": "Prolog - Before Init",
+      "width": 230,
+      "sublabel": "al_prolog_init"
+    },
+    {
+      "id": "prolog",
+      "lane": "al",
+      "col": 1,
+      "type": "backend",
+      "label": "Prolog - After Init",
+      "width": 221,
+      "sublabel": "al_prolog"
+    },
+    {
+      "id": "startcycle",
+      "lane": "al",
+      "col": 2,
+      "type": "backend",
+      "label": "Prolog - Startup",
+      "width": 192,
+      "sublabel": "al_startcycle"
+    },
+    {
+      "id": "flow",
+      "lane": "al",
+      "col": 3,
+      "type": "database",
+      "label": "AL flow",
+      "width": 268,
+      "sublabel": "connectors run / repeats",
+      "tag": "per cycle"
+    },
+    {
+      "id": "epilog",
+      "lane": "al",
+      "col": 4,
+      "type": "backend",
+      "label": "Epilog",
+      "width": 150,
+      "sublabel": "al_epilog"
+    },
+    {
+      "id": "epilog2",
+      "lane": "al",
+      "col": 5,
+      "type": "backend",
+      "label": "Epilog - After Flow",
+      "width": 221,
+      "sublabel": "al_epilog2"
+    },
+    {
+      "id": "onsuccess",
+      "lane": "term",
+      "col": 4,
+      "type": "backend",
+      "label": "On Success",
+      "width": 154,
+      "sublabel": "al_onsuccess"
+    },
+    {
+      "id": "onfailure",
+      "lane": "term",
+      "col": 3,
+      "type": "security",
+      "label": "On Failure",
+      "width": 154,
+      "sublabel": "al_onfailure"
+    },
+    {
+      "id": "shutdown",
+      "lane": "term",
+      "col": 5,
+      "type": "backend",
+      "label": "Shutdown",
+      "width": 150,
+      "sublabel": "al_shutdown"
+    }
+  ],
+  "edges": [
+    {
+      "from": "prolog_init",
+      "to": "prolog",
+      "variant": "default"
+    },
+    {
+      "from": "prolog",
+      "to": "startcycle",
+      "variant": "default"
+    },
+    {
+      "from": "startcycle",
+      "to": "flow",
+      "variant": "emphasis",
+      "label": "start"
+    },
+    {
+      "from": "flow",
+      "to": "epilog",
+      "variant": "emphasis",
+      "label": "cycles done"
+    },
+    {
+      "from": "epilog",
+      "to": "epilog2",
+      "variant": "default"
+    },
+    {
+      "from": "epilog2",
+      "to": "onsuccess",
+      "variant": "emphasis",
+      "label": "ok",
+      "role": "branch"
+    },
+    {
+      "from": "flow",
+      "to": "onfailure",
+      "variant": "security",
+      "label": "error",
+      "role": "error"
+    },
+    {
+      "from": "onsuccess",
+      "to": "shutdown",
+      "variant": "default"
+    },
+    {
+      "from": "onfailure",
+      "to": "shutdown",
+      "variant": "security",
+      "role": "error"
+    }
+  ]
+}

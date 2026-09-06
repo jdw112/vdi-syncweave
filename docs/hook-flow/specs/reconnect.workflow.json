@@ -1,0 +1,203 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Reconnect & Failover Hook Flow",
+    "quality_profile": "standard",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "backend": {
+          "label": "Hook"
+        },
+        "messagebus": {
+          "label": "Override hook"
+        },
+        "database": {
+          "label": "Attribute map"
+        },
+        "security": {
+          "label": "Fail / error hook"
+        },
+        "external": {
+          "label": "Terminal / no-change"
+        }
+      }
+    },
+    "output": "docs/hook-flow/reconnect.html",
+    "subtitle": "Hooks from HookTree.reconnectHooks"
+  },
+  "lanes": [
+    {
+      "id": "conn",
+      "label": "Connection"
+    },
+    {
+      "id": "reconnect",
+      "label": "Reconnect (same host)"
+    },
+    {
+      "id": "failover",
+      "label": "Failover (next host)"
+    },
+    {
+      "id": "failback",
+      "label": "Failback (primary)"
+    }
+  ],
+  "phases": [
+    {
+      "id": "c",
+      "label": "Connect",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "r",
+      "label": "Recover",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "b",
+      "label": "Failback",
+      "fromCol": 4,
+      "toCol": 5
+    }
+  ],
+  "mainPath": [
+    "connect_init",
+    "on_connection_failure",
+    "reconnect_ok"
+  ],
+  "nodes": [
+    {
+      "id": "connect_init",
+      "lane": "conn",
+      "col": 0,
+      "type": "backend",
+      "label": "connect_init",
+      "width": 183,
+      "sublabel": "open connection"
+    },
+    {
+      "id": "on_connection_failure",
+      "lane": "conn",
+      "col": 1,
+      "type": "security",
+      "label": "on_connection_failure",
+      "width": 240,
+      "sublabel": "detected drop"
+    },
+    {
+      "id": "reconnect_ok",
+      "lane": "reconnect",
+      "col": 2,
+      "type": "backend",
+      "label": "reconnect_ok",
+      "width": 154,
+      "sublabel": "same server"
+    },
+    {
+      "id": "reconnect_fail",
+      "lane": "reconnect",
+      "col": 3,
+      "type": "security",
+      "label": "reconnect_fail",
+      "width": 173
+    },
+    {
+      "id": "failover_ok",
+      "lane": "failover",
+      "col": 2,
+      "type": "backend",
+      "label": "failover_ok",
+      "width": 150,
+      "sublabel": "next server"
+    },
+    {
+      "id": "failover_fail",
+      "lane": "failover",
+      "col": 3,
+      "type": "security",
+      "label": "failover_fail",
+      "width": 164
+    },
+    {
+      "id": "failback_ok",
+      "lane": "failback",
+      "col": 4,
+      "type": "backend",
+      "label": "failback_ok",
+      "width": 154,
+      "sublabel": "primary back"
+    },
+    {
+      "id": "failback_fail",
+      "lane": "failback",
+      "col": 5,
+      "type": "security",
+      "label": "failback_fail",
+      "width": 164
+    }
+  ],
+  "edges": [
+    {
+      "from": "connect_init",
+      "to": "on_connection_failure",
+      "variant": "security",
+      "label": "connection lost",
+      "role": "error"
+    },
+    {
+      "from": "on_connection_failure",
+      "to": "reconnect_ok",
+      "variant": "emphasis",
+      "label": "retry same",
+      "role": "branch"
+    },
+    {
+      "from": "on_connection_failure",
+      "to": "reconnect_fail",
+      "variant": "dashed",
+      "label": "retry failed",
+      "role": "branch"
+    },
+    {
+      "from": "reconnect_fail",
+      "to": "failover_ok",
+      "variant": "emphasis",
+      "label": "try next",
+      "role": "branch"
+    },
+    {
+      "from": "reconnect_fail",
+      "to": "failover_fail",
+      "variant": "security",
+      "label": "no server",
+      "role": "error"
+    },
+    {
+      "from": "failover_ok",
+      "to": "failback_ok",
+      "variant": "dashed",
+      "label": "primary recovers",
+      "role": "branch"
+    },
+    {
+      "from": "failback_ok",
+      "to": "connect_init",
+      "variant": "dashed",
+      "label": "resume",
+      "role": "return"
+    },
+    {
+      "from": "failback_ok",
+      "to": "failback_fail",
+      "variant": "security",
+      "label": "failback error",
+      "role": "error"
+    }
+  ]
+}

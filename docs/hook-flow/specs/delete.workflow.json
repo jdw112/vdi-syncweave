@@ -1,0 +1,348 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Delete Mode Hook Flow",
+    "quality_profile": "standard",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "backend": {
+          "label": "Hook"
+        },
+        "messagebus": {
+          "label": "Override hook"
+        },
+        "database": {
+          "label": "Attribute map"
+        },
+        "security": {
+          "label": "Fail / error hook"
+        },
+        "external": {
+          "label": "Terminal / no-change"
+        }
+      }
+    },
+    "output": "docs/hook-flow/delete.html",
+    "subtitle": "Hooks from HookTree.deleteLoop"
+  },
+  "lanes": [
+    {
+      "id": "prolog",
+      "label": "Prolog / Initialize"
+    },
+    {
+      "id": "flow",
+      "label": "Data Flow - Find"
+    },
+    {
+      "id": "result",
+      "label": "Data Flow - Delete"
+    },
+    {
+      "id": "epilog",
+      "label": "Epilog / Close"
+    },
+    {
+      "id": "errors",
+      "label": "Errors & Reconnect",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "init",
+      "label": "Initialize",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "loop",
+      "label": "Delete loop",
+      "fromCol": 2,
+      "toCol": 5,
+      "variant": "emphasis"
+    }
+  ],
+  "mainPath": [
+    "before_execute",
+    "override_delete",
+    "before_lookup",
+    "delete_multiple",
+    "after_lookup",
+    "input_attribute_map"
+  ],
+  "nodes": [
+    {
+      "id": "before_initialize",
+      "lane": "prolog",
+      "col": 0,
+      "type": "backend",
+      "label": "before_initialize",
+      "width": 202
+    },
+    {
+      "id": "after_initialize",
+      "lane": "prolog",
+      "col": 1,
+      "type": "backend",
+      "label": "after_initialize",
+      "width": 192
+    },
+    {
+      "id": "before_execute",
+      "lane": "flow",
+      "col": 0,
+      "type": "backend",
+      "label": "before_execute",
+      "width": 173,
+      "sublabel": "each cycle"
+    },
+    {
+      "id": "override_delete",
+      "lane": "flow",
+      "col": 1,
+      "type": "messagebus",
+      "label": "override_delete",
+      "width": 202,
+      "sublabel": "override read+del"
+    },
+    {
+      "id": "before_lookup",
+      "lane": "flow",
+      "col": 2,
+      "type": "backend",
+      "label": "before_lookup",
+      "width": 164
+    },
+    {
+      "id": "delete_multiple",
+      "lane": "flow",
+      "col": 3,
+      "type": "backend",
+      "label": "delete_multiple",
+      "width": 183,
+      "sublabel": "many matches"
+    },
+    {
+      "id": "after_lookup",
+      "lane": "flow",
+      "col": 4,
+      "type": "backend",
+      "label": "after_lookup",
+      "width": 154
+    },
+    {
+      "id": "input_attribute_map",
+      "lane": "flow",
+      "col": 5,
+      "type": "database",
+      "label": "input_attribute_map",
+      "width": 221
+    },
+    {
+      "id": "before_delete",
+      "lane": "result",
+      "col": 2,
+      "type": "backend",
+      "label": "before_delete",
+      "width": 164
+    },
+    {
+      "id": "after_delete",
+      "lane": "result",
+      "col": 3,
+      "type": "backend",
+      "label": "after_delete",
+      "width": 154
+    },
+    {
+      "id": "delete_ok",
+      "lane": "result",
+      "col": 4,
+      "type": "backend",
+      "label": "delete_ok",
+      "width": 150
+    },
+    {
+      "id": "default_ok",
+      "lane": "result",
+      "col": 5,
+      "type": "backend",
+      "label": "default_ok",
+      "width": 150,
+      "sublabel": "next cycle"
+    },
+    {
+      "id": "initialize_fail",
+      "lane": "prolog",
+      "col": 2,
+      "type": "security",
+      "label": "initialize_fail",
+      "width": 183
+    },
+    {
+      "id": "delete_nomatch",
+      "lane": "errors",
+      "col": 1,
+      "type": "external",
+      "label": "delete_nomatch",
+      "width": 173,
+      "sublabel": "no match"
+    },
+    {
+      "id": "delete_fail",
+      "lane": "errors",
+      "col": 3,
+      "type": "security",
+      "label": "delete_fail",
+      "width": 150
+    },
+    {
+      "id": "default_fail",
+      "lane": "errors",
+      "col": 4,
+      "type": "security",
+      "label": "default_fail",
+      "width": 154
+    },
+    {
+      "id": "close_fail",
+      "lane": "errors",
+      "col": 5,
+      "type": "security",
+      "label": "close_fail",
+      "width": 150
+    },
+    {
+      "id": "before_close",
+      "lane": "epilog",
+      "col": 4,
+      "type": "backend",
+      "label": "before_close",
+      "width": 154
+    },
+    {
+      "id": "after_close",
+      "lane": "epilog",
+      "col": 5,
+      "type": "backend",
+      "label": "after_close",
+      "width": 150
+    }
+  ],
+  "edges": [
+    {
+      "from": "before_initialize",
+      "to": "after_initialize",
+      "variant": "default"
+    },
+    {
+      "from": "after_initialize",
+      "to": "before_execute",
+      "variant": "emphasis",
+      "label": "enter loop"
+    },
+    {
+      "from": "before_execute",
+      "to": "override_delete",
+      "variant": "default"
+    },
+    {
+      "from": "override_delete",
+      "to": "before_lookup",
+      "variant": "default"
+    },
+    {
+      "from": "before_lookup",
+      "to": "delete_multiple",
+      "variant": "default"
+    },
+    {
+      "from": "delete_multiple",
+      "to": "after_lookup",
+      "variant": "default"
+    },
+    {
+      "from": "after_lookup",
+      "to": "input_attribute_map",
+      "variant": "default"
+    },
+    {
+      "from": "input_attribute_map",
+      "to": "before_delete",
+      "variant": "emphasis",
+      "label": "match"
+    },
+    {
+      "from": "before_delete",
+      "to": "after_delete",
+      "variant": "emphasis",
+      "label": "delete entry"
+    },
+    {
+      "from": "after_delete",
+      "to": "delete_ok",
+      "variant": "default"
+    },
+    {
+      "from": "delete_ok",
+      "to": "default_ok",
+      "variant": "default"
+    },
+    {
+      "from": "default_ok",
+      "to": "before_execute",
+      "variant": "dashed",
+      "label": "next cycle",
+      "role": "return"
+    },
+    {
+      "from": "before_lookup",
+      "to": "delete_nomatch",
+      "variant": "dashed",
+      "label": "no match",
+      "role": "branch"
+    },
+    {
+      "from": "delete_ok",
+      "to": "delete_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "delete_fail",
+      "to": "default_fail",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "before_initialize",
+      "to": "initialize_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "default_ok",
+      "to": "before_close",
+      "variant": "dashed",
+      "label": "on close",
+      "role": "branch"
+    },
+    {
+      "from": "before_close",
+      "to": "after_close",
+      "variant": "default"
+    },
+    {
+      "from": "after_close",
+      "to": "close_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    }
+  ]
+}

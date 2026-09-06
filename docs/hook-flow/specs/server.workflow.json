@@ -1,0 +1,367 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Server Mode Hook Flow",
+    "quality_profile": "standard",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "backend": {
+          "label": "Hook"
+        },
+        "messagebus": {
+          "label": "Override hook"
+        },
+        "database": {
+          "label": "Attribute map"
+        },
+        "security": {
+          "label": "Fail / error hook"
+        },
+        "external": {
+          "label": "Terminal / no-change"
+        }
+      }
+    },
+    "output": "docs/hook-flow/server.html",
+    "subtitle": "Hooks from HookTree.serverMode"
+  },
+  "lanes": [
+    {
+      "id": "prolog",
+      "label": "Prolog / Initialize"
+    },
+    {
+      "id": "accept",
+      "label": "Accept client"
+    },
+    {
+      "id": "read",
+      "label": "Read request (iterator)"
+    },
+    {
+      "id": "reply",
+      "label": "Send reply"
+    },
+    {
+      "id": "epilog",
+      "label": "Epilog / Close"
+    },
+    {
+      "id": "errors",
+      "label": "Errors & Reconnect",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "init",
+      "label": "Initialize",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "serve",
+      "label": "Serve clients",
+      "fromCol": 2,
+      "toCol": 5,
+      "variant": "emphasis"
+    }
+  ],
+  "mainPath": [
+    "before_getnextclient",
+    "after_getnextclient",
+    "before_execute",
+    "before_getnext",
+    "after_getnext",
+    "get_ok"
+  ],
+  "nodes": [
+    {
+      "id": "before_initialize",
+      "lane": "prolog",
+      "col": 0,
+      "type": "backend",
+      "label": "before_initialize",
+      "width": 202
+    },
+    {
+      "id": "before_selectEntries",
+      "lane": "prolog",
+      "col": 1,
+      "type": "backend",
+      "label": "before_selectEntries",
+      "width": 230
+    },
+    {
+      "id": "after_selectEntries",
+      "lane": "prolog",
+      "col": 2,
+      "type": "backend",
+      "label": "after_selectEntries",
+      "width": 221
+    },
+    {
+      "id": "after_initialize",
+      "lane": "prolog",
+      "col": 3,
+      "type": "backend",
+      "label": "after_initialize",
+      "width": 192
+    },
+    {
+      "id": "before_getnextclient",
+      "lane": "accept",
+      "col": 0,
+      "type": "backend",
+      "label": "before_getnextclient",
+      "width": 230,
+      "sublabel": "wait client"
+    },
+    {
+      "id": "after_getnextclient",
+      "lane": "accept",
+      "col": 1,
+      "type": "backend",
+      "label": "after_getnextclient",
+      "width": 221,
+      "sublabel": "client in"
+    },
+    {
+      "id": "before_execute",
+      "lane": "read",
+      "col": 2,
+      "type": "backend",
+      "label": "before_execute",
+      "width": 173
+    },
+    {
+      "id": "before_getnext",
+      "lane": "read",
+      "col": 3,
+      "type": "backend",
+      "label": "before_getnext",
+      "width": 173,
+      "sublabel": "read request"
+    },
+    {
+      "id": "after_getnext",
+      "lane": "read",
+      "col": 4,
+      "type": "backend",
+      "label": "after_getnext",
+      "width": 164
+    },
+    {
+      "id": "get_ok",
+      "lane": "read",
+      "col": 5,
+      "type": "backend",
+      "label": "get_ok",
+      "width": 150
+    },
+    {
+      "id": "before_reply",
+      "lane": "reply",
+      "col": 3,
+      "type": "backend",
+      "label": "before_reply",
+      "width": 154,
+      "sublabel": "build reply"
+    },
+    {
+      "id": "after_reply2",
+      "lane": "reply",
+      "col": 4,
+      "type": "backend",
+      "label": "after_reply2",
+      "width": 154
+    },
+    {
+      "id": "reply_ok",
+      "lane": "reply",
+      "col": 5,
+      "type": "backend",
+      "label": "reply_ok",
+      "width": 150
+    },
+    {
+      "id": "initialize_fail",
+      "lane": "errors",
+      "col": 0,
+      "type": "security",
+      "label": "initialize_fail",
+      "width": 183
+    },
+    {
+      "id": "getnextclient_fail",
+      "lane": "errors",
+      "col": 1,
+      "type": "security",
+      "label": "getnextclient_fail",
+      "width": 211
+    },
+    {
+      "id": "get_fail",
+      "lane": "errors",
+      "col": 5,
+      "type": "security",
+      "label": "get_fail",
+      "width": 150
+    },
+    {
+      "id": "reply_fail",
+      "lane": "errors",
+      "col": 4,
+      "type": "security",
+      "label": "reply_fail",
+      "width": 150
+    },
+    {
+      "id": "close_fail",
+      "lane": "errors",
+      "col": 3,
+      "type": "security",
+      "label": "close_fail",
+      "width": 150
+    },
+    {
+      "id": "before_close",
+      "lane": "epilog",
+      "col": 1,
+      "type": "backend",
+      "label": "before_close",
+      "width": 154
+    },
+    {
+      "id": "after_close",
+      "lane": "epilog",
+      "col": 2,
+      "type": "backend",
+      "label": "after_close",
+      "width": 150
+    }
+  ],
+  "edges": [
+    {
+      "from": "before_initialize",
+      "to": "before_selectEntries",
+      "variant": "default"
+    },
+    {
+      "from": "before_selectEntries",
+      "to": "after_selectEntries",
+      "variant": "default"
+    },
+    {
+      "from": "after_selectEntries",
+      "to": "after_initialize",
+      "variant": "default"
+    },
+    {
+      "from": "after_initialize",
+      "to": "before_getnextclient",
+      "variant": "emphasis",
+      "label": "listen"
+    },
+    {
+      "from": "before_getnextclient",
+      "to": "after_getnextclient",
+      "variant": "emphasis",
+      "label": "accept"
+    },
+    {
+      "from": "after_getnextclient",
+      "to": "before_execute",
+      "variant": "default"
+    },
+    {
+      "from": "before_execute",
+      "to": "before_getnext",
+      "variant": "default"
+    },
+    {
+      "from": "before_getnext",
+      "to": "after_getnext",
+      "variant": "emphasis",
+      "label": "read"
+    },
+    {
+      "from": "after_getnext",
+      "to": "get_ok",
+      "variant": "default"
+    },
+    {
+      "from": "get_ok",
+      "to": "before_reply",
+      "variant": "emphasis",
+      "label": "handle"
+    },
+    {
+      "from": "before_reply",
+      "to": "after_reply2",
+      "variant": "emphasis",
+      "label": "reply"
+    },
+    {
+      "from": "after_reply2",
+      "to": "reply_ok",
+      "variant": "default"
+    },
+    {
+      "from": "reply_ok",
+      "to": "before_getnextclient",
+      "variant": "dashed",
+      "label": "next client",
+      "role": "return"
+    },
+    {
+      "from": "before_getnextclient",
+      "to": "getnextclient_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "get_ok",
+      "to": "get_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "reply_ok",
+      "to": "reply_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "before_initialize",
+      "to": "initialize_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "after_getnextclient",
+      "to": "before_close",
+      "variant": "dashed",
+      "label": "shutdown",
+      "role": "branch"
+    },
+    {
+      "from": "before_close",
+      "to": "after_close",
+      "variant": "default"
+    },
+    {
+      "from": "after_close",
+      "to": "close_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    }
+  ]
+}

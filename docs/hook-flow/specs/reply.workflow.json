@@ -1,0 +1,155 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Reply Mode Hook Flow",
+    "quality_profile": "standard",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "backend": {
+          "label": "Hook"
+        },
+        "messagebus": {
+          "label": "Override hook"
+        },
+        "database": {
+          "label": "Attribute map"
+        },
+        "security": {
+          "label": "Fail / error hook"
+        },
+        "external": {
+          "label": "Terminal / no-change"
+        }
+      }
+    },
+    "output": "docs/hook-flow/reply.html",
+    "subtitle": "Hooks from HookTree.replyLoop"
+  },
+  "lanes": [
+    {
+      "id": "flow",
+      "label": "Data Flow - Reply"
+    },
+    {
+      "id": "errors",
+      "label": "Errors & Reconnect",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "reply",
+      "label": "Reply",
+      "fromCol": 0,
+      "toCol": 5,
+      "variant": "emphasis"
+    }
+  ],
+  "mainPath": [
+    "before_execute_reply",
+    "override_reply",
+    "output_attribute_map",
+    "before_reply",
+    "after_reply2",
+    "reply_ok"
+  ],
+  "nodes": [
+    {
+      "id": "before_execute_reply",
+      "lane": "flow",
+      "col": 0,
+      "type": "backend",
+      "label": "before_execute_reply",
+      "width": 230,
+      "sublabel": "each reply"
+    },
+    {
+      "id": "override_reply",
+      "lane": "flow",
+      "col": 1,
+      "type": "messagebus",
+      "label": "override_reply",
+      "width": 173,
+      "sublabel": "override"
+    },
+    {
+      "id": "output_attribute_map",
+      "lane": "flow",
+      "col": 2,
+      "type": "database",
+      "label": "output_attribute_map",
+      "width": 230,
+      "sublabel": "build reply"
+    },
+    {
+      "id": "before_reply",
+      "lane": "flow",
+      "col": 3,
+      "type": "backend",
+      "label": "before_reply",
+      "width": 154
+    },
+    {
+      "id": "after_reply2",
+      "lane": "flow",
+      "col": 4,
+      "type": "backend",
+      "label": "after_reply2",
+      "width": 154,
+      "sublabel": "sent"
+    },
+    {
+      "id": "reply_ok",
+      "lane": "flow",
+      "col": 5,
+      "type": "backend",
+      "label": "reply_ok",
+      "width": 150
+    },
+    {
+      "id": "reply_fail",
+      "lane": "errors",
+      "col": 5,
+      "type": "security",
+      "label": "reply_fail",
+      "width": 150
+    }
+  ],
+  "edges": [
+    {
+      "from": "before_execute_reply",
+      "to": "override_reply",
+      "variant": "default"
+    },
+    {
+      "from": "override_reply",
+      "to": "output_attribute_map",
+      "variant": "default"
+    },
+    {
+      "from": "output_attribute_map",
+      "to": "before_reply",
+      "variant": "default"
+    },
+    {
+      "from": "before_reply",
+      "to": "after_reply2",
+      "variant": "emphasis",
+      "label": "send reply"
+    },
+    {
+      "from": "after_reply2",
+      "to": "reply_ok",
+      "variant": "default"
+    },
+    {
+      "from": "reply_ok",
+      "to": "reply_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    }
+  ]
+}

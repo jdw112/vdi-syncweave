@@ -1,0 +1,431 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Update Mode Hook Flow",
+    "quality_profile": "standard",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "backend": {
+          "label": "Hook"
+        },
+        "messagebus": {
+          "label": "Override hook"
+        },
+        "database": {
+          "label": "Attribute map"
+        },
+        "security": {
+          "label": "Fail / error hook"
+        },
+        "external": {
+          "label": "Terminal / no-change"
+        }
+      }
+    },
+    "output": "docs/hook-flow/update.html",
+    "subtitle": "Hooks from HookTree.updateLoop"
+  },
+  "lanes": [
+    {
+      "id": "prolog",
+      "label": "Prolog / Initialize"
+    },
+    {
+      "id": "flow",
+      "label": "Data Flow - Update"
+    },
+    {
+      "id": "modify",
+      "label": "Modify branch"
+    },
+    {
+      "id": "add",
+      "label": "Add branch"
+    },
+    {
+      "id": "result",
+      "label": "Result / Close"
+    },
+    {
+      "id": "errors",
+      "label": "Errors & Reconnect",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "init",
+      "label": "Initialize",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "loop",
+      "label": "Update loop",
+      "fromCol": 2,
+      "toCol": 5,
+      "variant": "emphasis"
+    }
+  ],
+  "mainPath": [
+    "before_execute",
+    "before_update",
+    "override_update",
+    "before_lookup",
+    "after_lookup"
+  ],
+  "nodes": [
+    {
+      "id": "before_initialize",
+      "lane": "prolog",
+      "col": 0,
+      "type": "backend",
+      "label": "before_initialize",
+      "width": 202
+    },
+    {
+      "id": "after_initialize",
+      "lane": "prolog",
+      "col": 1,
+      "type": "backend",
+      "label": "after_initialize",
+      "width": 192
+    },
+    {
+      "id": "before_execute",
+      "lane": "flow",
+      "col": 0,
+      "type": "backend",
+      "label": "before_execute",
+      "width": 173,
+      "sublabel": "each cycle"
+    },
+    {
+      "id": "before_update",
+      "lane": "flow",
+      "col": 1,
+      "type": "backend",
+      "label": "before_update",
+      "width": 164
+    },
+    {
+      "id": "override_update",
+      "lane": "flow",
+      "col": 2,
+      "type": "messagebus",
+      "label": "override_update",
+      "width": 183,
+      "sublabel": "override"
+    },
+    {
+      "id": "before_lookup",
+      "lane": "flow",
+      "col": 3,
+      "type": "backend",
+      "label": "before_lookup",
+      "width": 164
+    },
+    {
+      "id": "after_lookup",
+      "lane": "flow",
+      "col": 4,
+      "type": "backend",
+      "label": "after_lookup",
+      "width": 154
+    },
+    {
+      "id": "after_update",
+      "lane": "flow",
+      "col": 5,
+      "type": "backend",
+      "label": "after_update",
+      "width": 154
+    },
+    {
+      "id": "before_modify",
+      "lane": "modify",
+      "col": 3,
+      "type": "backend",
+      "label": "before_modify",
+      "width": 173,
+      "sublabel": "existing entry"
+    },
+    {
+      "id": "modify_apply",
+      "lane": "modify",
+      "col": 4,
+      "type": "backend",
+      "label": "modify_apply",
+      "width": 183,
+      "sublabel": "compute changes"
+    },
+    {
+      "id": "after_modify",
+      "lane": "modify",
+      "col": 5,
+      "type": "backend",
+      "label": "after_modify",
+      "width": 154
+    },
+    {
+      "id": "before_add",
+      "lane": "add",
+      "col": 3,
+      "type": "backend",
+      "label": "before_add",
+      "width": 202,
+      "sublabel": "no existing entry"
+    },
+    {
+      "id": "after_add",
+      "lane": "add",
+      "col": 4,
+      "type": "backend",
+      "label": "after_add",
+      "width": 150
+    },
+    {
+      "id": "update_ok",
+      "lane": "result",
+      "col": 0,
+      "type": "backend",
+      "label": "update_ok",
+      "width": 150
+    },
+    {
+      "id": "default_ok",
+      "lane": "result",
+      "col": 1,
+      "type": "backend",
+      "label": "default_ok",
+      "width": 150,
+      "sublabel": "next cycle"
+    },
+    {
+      "id": "initialize_fail",
+      "lane": "prolog",
+      "col": 2,
+      "type": "security",
+      "label": "initialize_fail",
+      "width": 183
+    },
+    {
+      "id": "update_multiple",
+      "lane": "errors",
+      "col": 3,
+      "type": "external",
+      "label": "update_multiple",
+      "width": 183,
+      "sublabel": "many matches"
+    },
+    {
+      "id": "modify_nochange",
+      "lane": "errors",
+      "col": 4,
+      "type": "external",
+      "label": "modify_nochange",
+      "width": 183,
+      "sublabel": "no delta"
+    },
+    {
+      "id": "add_abandon",
+      "lane": "errors",
+      "col": 2,
+      "type": "external",
+      "label": "add_abandon",
+      "width": 150,
+      "sublabel": "skip add"
+    },
+    {
+      "id": "update_fail",
+      "lane": "errors",
+      "col": 1,
+      "type": "security",
+      "label": "update_fail",
+      "width": 150
+    },
+    {
+      "id": "default_fail",
+      "lane": "errors",
+      "col": 5,
+      "type": "security",
+      "label": "default_fail",
+      "width": 154
+    },
+    {
+      "id": "close_fail",
+      "lane": "result",
+      "col": 4,
+      "type": "security",
+      "label": "close_fail",
+      "width": 150
+    },
+    {
+      "id": "before_close",
+      "lane": "result",
+      "col": 2,
+      "type": "backend",
+      "label": "before_close",
+      "width": 154
+    },
+    {
+      "id": "after_close",
+      "lane": "result",
+      "col": 3,
+      "type": "backend",
+      "label": "after_close",
+      "width": 150
+    }
+  ],
+  "edges": [
+    {
+      "from": "before_initialize",
+      "to": "after_initialize",
+      "variant": "default"
+    },
+    {
+      "from": "after_initialize",
+      "to": "before_execute",
+      "variant": "emphasis",
+      "label": "enter loop"
+    },
+    {
+      "from": "before_execute",
+      "to": "before_update",
+      "variant": "default"
+    },
+    {
+      "from": "before_update",
+      "to": "override_update",
+      "variant": "default"
+    },
+    {
+      "from": "override_update",
+      "to": "before_lookup",
+      "variant": "default"
+    },
+    {
+      "from": "before_lookup",
+      "to": "after_lookup",
+      "variant": "default"
+    },
+    {
+      "from": "after_lookup",
+      "to": "before_modify",
+      "variant": "emphasis",
+      "label": "entry exists",
+      "role": "branch"
+    },
+    {
+      "from": "before_modify",
+      "to": "modify_apply",
+      "variant": "default"
+    },
+    {
+      "from": "modify_apply",
+      "to": "after_modify",
+      "variant": "default"
+    },
+    {
+      "from": "after_modify",
+      "to": "after_update",
+      "variant": "default"
+    },
+    {
+      "from": "after_lookup",
+      "to": "before_add",
+      "variant": "dashed",
+      "label": "no entry",
+      "role": "branch"
+    },
+    {
+      "from": "before_add",
+      "to": "after_add",
+      "variant": "default"
+    },
+    {
+      "from": "after_add",
+      "to": "after_update",
+      "variant": "default"
+    },
+    {
+      "from": "after_update",
+      "to": "update_ok",
+      "variant": "default"
+    },
+    {
+      "from": "update_ok",
+      "to": "default_ok",
+      "variant": "default"
+    },
+    {
+      "from": "default_ok",
+      "to": "before_execute",
+      "variant": "dashed",
+      "label": "next cycle",
+      "role": "return"
+    },
+    {
+      "from": "before_lookup",
+      "to": "update_multiple",
+      "variant": "dashed",
+      "label": "many",
+      "role": "branch"
+    },
+    {
+      "from": "before_modify",
+      "to": "modify_nochange",
+      "variant": "dashed",
+      "label": "no delta",
+      "role": "branch"
+    },
+    {
+      "from": "before_add",
+      "to": "add_abandon",
+      "variant": "dashed",
+      "label": "abandon",
+      "role": "branch"
+    },
+    {
+      "from": "update_ok",
+      "to": "update_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "update_fail",
+      "to": "default_fail",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "before_initialize",
+      "to": "initialize_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    },
+    {
+      "from": "default_ok",
+      "to": "before_close",
+      "variant": "dashed",
+      "label": "on close",
+      "role": "branch"
+    },
+    {
+      "from": "before_close",
+      "to": "after_close",
+      "variant": "default"
+    },
+    {
+      "from": "after_close",
+      "to": "close_fail",
+      "variant": "security",
+      "label": "on error",
+      "role": "error"
+    }
+  ]
+}
