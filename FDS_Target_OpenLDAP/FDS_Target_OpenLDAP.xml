@@ -1,0 +1,996 @@
+<?xml version="1.0" encoding="UTF-8"?><MetamergeConfig IDIversion="SyncWeave / VDI 11.0" created="Fri Sep 12 00:00:00 UTC 2026" createdBy="SyncWeave" modified="Fri Sep 12 00:00:00 UTC 2026" modifiedBy="SyncWeave" version="7.1.1">
+    <!--
+        FDS_Target_OpenLDAP - Custom target implementation for Federated Directory Server (FDS).
+
+        Purpose:
+            Synchronize identities from a Federated Directory Server source (for example an
+            IBM Security Directory Server / IBM Directory Server) to an OpenLDAP directory that
+            is configured as a custom target.
+
+        This project follows the "Custom target implementation" pattern documented for FDS:
+            * It exposes the FDS UI forms GeneralSettings and FlowSettings.
+            * It provides the two custom target AssemblyLines TestConnection and WriteToTarget.
+            * WriteToTarget implements the full set of write operations against OpenLDAP:
+                  initialize, findEntry (lookup/get), putEntry (add), modEntry (modify),
+                  deleteEntry (delete) and terminate.
+
+        Deployment (see ReadMe.txt):
+            * The Solution Name of this project must be prefixed FDS_Target so that FDS enables
+              the custom target feature. This file is named FDS_Target_OpenLDAP.xml.
+            * In the Configuration Editor add a References namespace named LDAPSync that points
+              to configs/LDAPSync.xml so that initUtils(), getProperty(), connectorParam(),
+              logmsg() and sendCustomNotification() resolve.
+            * Copy this file to sdi_solution_dir/configs and restart the server.
+    -->
+    <Folder name="AssemblyLines">
+
+        <!-- ============================================================= -->
+        <!-- TestConnection                                                 -->
+        <!-- Called when FDS starts and when the user clicks Test           -->
+        <!-- Connection on the Connection Settings page. It performs a      -->
+        <!-- harmless Lookup against OpenLDAP and reports success or the    -->
+        <!-- captured error back to the FDS user interface as JSON.         -->
+        <!-- ============================================================= -->
+        <AssemblyLine name="TestConnection">
+            <ModTime>1757635200000</ModTime>
+            <Settings>
+                <parameter name="includeGlobalPrologs">true</parameter>
+            </Settings>
+            <Hooks>
+                <Hook name="prolog0">
+                    <InheritFrom>[no inheritance]</InheritFrom>
+                    <Name>prolog0</Name>
+                    <!-- Prolog - Before Initialization: initialize the LDAPSync utility library -->
+                    <Script><![CDATA[initUtils();]]></Script>
+                    <Enabled>true</Enabled>
+                </Hook>
+                <Hook name="onfailure">
+                    <InheritFrom>[no inheritance]</InheritFrom>
+                    <Name>onfailure</Name>
+                    <!-- Any uncaught error must still return a failed status to the FDS UI. -->
+                    <Script><![CDATA[jsonEntry = system.newEntry();
+jsonEntry.status = "failed";
+jsonEntry.message = "TestConnection failed: " + error.toString();
+jsonPayload = jsonEntry.toJSON();
+work.result = jsonPayload;
+try {
+	sendCustomNotification("fds.testconnection", opEntry.getString("testId"), jsonPayload);
+} catch (ex) {
+	logmsg("ERROR", "Unable to send test connection notification: " + ex);
+}]]></Script>
+                    <Enabled>true</Enabled>
+                </Hook>
+            </Hooks>
+            <CheckpointConfig/>
+            <SandboxConfig/>
+            <ContainerEF name="EntryFeedContainer"/>
+            <ContainerDF name="DataFlowContainer">
+                <ModTime>1757635200000</ModTime>
+                <Script name="Test the connection and return result">
+                    <ModTime>1757635200000</ModTime>
+                    <parameter name="script"><![CDATA[// Read the OpenLDAP connection settings supplied on the FDS Connection Settings page.
+ldapUrl  = getProperty("target.ldap.url");
+binddn   = getProperty("target.ldap.user");
+bindpw   = getProperty("target.ldap.password");
+base     = getProperty("target.ldap.searchBase", "");
+useSSL   = "true".equalsIgnoreCase(getProperty("target.ldap.useSSL", "false"));
+authMeth = getProperty("target.ldap.authMethod", "Simple");
+
+jsonEntry = system.newEntry();
+
+if (ldapUrl == null || ldapUrl.trim().length() == 0) {
+	jsonEntry.status = "failed";
+	jsonEntry.message = "No LDAP URL configured.";
+} else {
+	conn = null;
+	try {
+		// Build and open a short-lived LDAP connection in Lookup mode to validate the settings.
+		conn = system.getConnector("ibmdi.LDAP");
+		conn.setParam("ldapUrl", ldapUrl);
+		conn.setParam("ldapAuthenticationMethod", authMeth);
+		if (binddn != null) conn.setParam("ldapUsername", binddn);
+		if (bindpw != null) conn.setParam("ldapPassword", bindpw);
+		conn.setParam("ldapSearchBase", base);
+		conn.setParam("ldapUseSSL", "" + useSSL);
+		conn.setParam("ldapSearchScope", "base");
+		conn.setParam("ldapSearchFilter", "(objectClass=*)");
+		conn.initialize(null);
+		conn.terminate();
+		jsonEntry.status = "success";
+	} catch (ex) {
+		jsonEntry.status = "failed";
+		jsonEntry.message = "Error connecting to OpenLDAP target: " + ldapUrl + " - " + ex;
+		try { if (conn != null) conn.terminate(); } catch (ignore) {}
+	}
+}
+
+// Return the status payload to the FDS user interface.
+jsonPayload = jsonEntry.toJSON();
+logmsg("INFO", "TestConnection result: " + jsonPayload);
+work.result = jsonPayload;
+
+// Signal completion to the FDS UI.
+sendCustomNotification("fds.testconnection", opEntry.getString("testId"), jsonPayload);]]></parameter>
+                </Script>
+            </ContainerDF>
+        </AssemblyLine>
+
+        <!-- ============================================================= -->
+        <!-- WriteToTarget                                                  -->
+        <!-- Called by FDS for every operation against the custom target.   -->
+        <!-- The requested operation is carried in the TCB attribute        -->
+        <!-- $operation; the entry type in $typeOfEntry. This AssemblyLine  -->
+        <!-- has no Iterator in the Feed section - the Work Entry is passed  -->
+        <!-- in by FDS and all work happens in the Data Flow branches.      -->
+        <!-- ============================================================= -->
+        <AssemblyLine name="WriteToTarget">
+            <ModTime>1757635200000</ModTime>
+            <Settings>
+                <parameter name="automapattributes">true</parameter>
+                <parameter name="includeGlobalPrologs">true</parameter>
+            </Settings>
+            <Hooks>
+                <Hook name="prolog0">
+                    <InheritFrom>[no inheritance]</InheritFrom>
+                    <Name>prolog0</Name>
+                    <!-- Prolog - Before Initialization: initialize the LDAPSync utility library -->
+                    <Script><![CDATA[initUtils();]]></Script>
+                    <Enabled>true</Enabled>
+                </Hook>
+                <Hook name="onfailure">
+                    <InheritFrom>[no inheritance]</InheritFrom>
+                    <Name>onfailure</Name>
+                    <!-- Report a failed write back to FDS through the TCB. -->
+                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "failed";
+tcb["$writeStatus"] = "failed";
+tcb["$change"] = false;
+tcb["$error"] = error;
+try { logmsg("ERROR", "WriteToTarget failed: " + error.toString()); } catch (ex) {}]]></Script>
+                    <Enabled>true</Enabled>
+                </Hook>
+            </Hooks>
+            <CheckpointConfig/>
+            <SandboxConfig/>
+            <ContainerEF name="EntryFeedContainer"/>
+            <ContainerDF name="DataFlowContainer">
+                <ModTime>1757635200000</ModTime>
+
+                <!-- Initialize: read the TCB attributes into script variables and set the
+                     default return values for the operation. -->
+                <Script name="Initialize">
+                    <ModTime>1757635200000</ModTime>
+                    <parameter name="script"><![CDATA[// Reference the Task Call Block and read what FDS is asking for.
+tcb = task.getTCB();
+typeOfEntry = tcb.getString("$typeOfEntry");
+operation   = tcb.getString("$operation");
+search      = tcb.getObject("$search");
+
+// Default the return TCB attributes to a safe (failed / no change) state.
+tcb["$change"] = false;
+tcb["$writeStatus"] = "failed";
+tcb["$status"] = "failed";
+tcb["$error"] = null;
+
+logmsg("INFO", "WriteToTarget: operation=" + operation + " typeOfEntry=" + typeOfEntry);]]></parameter>
+                </Script>
+
+                <!-- IF: Initialize operation -->
+                <Branch name="IF: Initialize operation">
+                    <ModTime>1757635200000</ModTime>
+                    <Script name="Signal initialize success">
+                        <ModTime>1757635200000</ModTime>
+                        <!-- The operational connectors below open their own connection when first
+                             used (Initialize = only when used), so initialize only has to report
+                             success back to FDS. Connectivity itself is validated by TestConnection. -->
+                        <parameter name="script"><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "unchanged";
+tcb["$change"] = false;]]></parameter>
+                    </Script>
+                    <ScriptCondition><![CDATA[return "initialize".equals(operation);]]></ScriptCondition>
+                    <Conditions/>
+                    <MatchAny>false</MatchAny>
+                    <Enabled>true</Enabled>
+                    <Type>0</Type>
+                </Branch>
+
+                <!-- IF: Terminate operation -->
+                <Branch name="ELSE-IF: Terminate operation">
+                    <ModTime>1757635200000</ModTime>
+                    <Script name="Signal terminate success">
+                        <ModTime>1757635200000</ModTime>
+                        <parameter name="script"><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "unchanged";
+tcb["$change"] = false;]]></parameter>
+                    </Script>
+                    <ScriptCondition><![CDATA[return "terminate".equals(operation);]]></ScriptCondition>
+                    <Conditions/>
+                    <MatchAny>false</MatchAny>
+                    <Enabled>true</Enabled>
+                    <Type>1</Type>
+                </Branch>
+
+                <!-- IF: Entry is Person -->
+                <Branch name="ELSE-IF: Entry is Person">
+                    <ModTime>1757635200000</ModTime>
+
+                    <!-- Ensure the target DN is present. FDS maps the source attributes to the
+                         target attributes before calling this AssemblyLine; if it did not also
+                         supply $dn we assemble it from the configured RDN attribute and the
+                         target container for users. -->
+                    <Script name="Build Person DN">
+                        <ModTime>1757635200000</ModTime>
+                        <parameter name="script"><![CDATA[rdnAttr = getProperty("flow.person.rdn", "uid");
+container = getProperty("flow.person.container", getProperty("target.ldap.searchBase", ""));
+existing = work.getString("$dn");
+if (existing == null || existing.length() == 0) {
+	rdnVal = work.getString(rdnAttr);
+	if (rdnVal != null && rdnVal.length() > 0) {
+		dn = rdnAttr + "=" + rdnVal;
+		if (container != null && container.length() > 0) dn = dn + "," + container;
+		work["$dn"] = dn;
+	}
+}]]></parameter>
+                    </Script>
+
+                    <!-- IF: FindEntry operation (lookup / get) -->
+                    <Branch name="IF: FindEntry operation">
+                        <ModTime>1757635200000</ModTime>
+                        <Connector name="Find Person">
+                            <InheritFrom>/Connectors/OpenLDAP</InheritFrom>
+                            <ModTime>1757635200000</ModTime>
+                            <ConnectorMode>Lookup</ConnectorMode>
+                            <ConnectorState>Enabled</ConnectorState>
+                            <Configuration>
+                                <InheritFrom>[parent]</InheritFrom>
+                            </Configuration>
+                            <Parser>
+                                <InheritFrom>[parent]</InheritFrom>
+                            </Parser>
+                            <AttributeMap name="Input">
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <!-- Return the found entry (all attributes) to FDS so it can decide
+                                     whether a modEntry is required. -->
+                                <AttributeMapItem>
+                                    <Name>*</Name>
+                                    <Type>simple</Type>
+                                    <Enabled>true</Enabled>
+                                    <Simple>*</Simple>
+                                </AttributeMapItem>
+                            </AttributeMap>
+                            <AttributeMap name="Output">
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                            </AttributeMap>
+                            <LinkCriteria>
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <LinkCriteriaItem>
+                                    <Key>findPersonByDN</Key>
+                                    <Attribute>$dn</Attribute>
+                                    <Operator>equals</Operator>
+                                    <Value>$$dn</Value>
+                                </LinkCriteriaItem>
+                            </LinkCriteria>
+                            <Hooks>
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <Hook name="lookup_nomatch">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>lookup_nomatch</Name>
+                                    <!-- No match: empty the Work Entry so FDS knows the entry does
+                                         not exist yet (a putEntry will follow). -->
+                                    <Script><![CDATA[work.removeAllAttributes();
+task.setWork(null);
+tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "unchanged";
+tcb["$change"] = false;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                                <Hook name="default_ok">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>default_ok</Name>
+                                    <!-- Match found: the Work Entry now carries the target attributes. -->
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "unchanged";
+tcb["$change"] = false;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                                <Hook name="default_fail">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>default_fail</Name>
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "failed";
+tcb["$error"] = error;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                            </Hooks>
+                            <InitializeOption>1</InitializeOption>
+                        </Connector>
+                        <ScriptCondition><![CDATA[return "findEntry".equals(operation);]]></ScriptCondition>
+                        <Conditions/>
+                        <MatchAny>false</MatchAny>
+                        <Enabled>true</Enabled>
+                        <Type>0</Type>
+                    </Branch>
+
+                    <!-- ELSE-IF: Add or Modify (putEntry / modEntry) -->
+                    <Branch name="ELSE-IF: Add or Modify">
+                        <ModTime>1757635200000</ModTime>
+                        <Connector name="Write Person">
+                            <InheritFrom>/Connectors/OpenLDAP</InheritFrom>
+                            <ModTime>1757635200000</ModTime>
+                            <!-- Update mode with Compute Changes: adds the entry if it does not
+                                 exist, otherwise modifies only the changed attributes. -->
+                            <ConnectorMode>Update</ConnectorMode>
+                            <ConnectorState>Enabled</ConnectorState>
+                            <Configuration>
+                                <InheritFrom>[parent]</InheritFrom>
+                                <parameter name="computeChanges">true</parameter>
+                            </Configuration>
+                            <Parser>
+                                <InheritFrom>[parent]</InheritFrom>
+                            </Parser>
+                            <AttributeMap name="Input">
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                            </AttributeMap>
+                            <AttributeMap name="Output">
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <!-- Write the target DN plus every attribute FDS placed on the Work
+                                     Entry (the source-to-target mapping is done by FDS). -->
+                                <AttributeMapItem>
+                                    <Name>$dn</Name>
+                                    <Type>advanced</Type>
+                                    <Enabled>true</Enabled>
+                                    <Add>true</Add>
+                                    <Modify>true</Modify>
+                                    <Script>work.getString("$dn");</Script>
+                                    <Simple>$dn</Simple>
+                                </AttributeMapItem>
+                                <AttributeMapItem>
+                                    <Name>*</Name>
+                                    <Type>simple</Type>
+                                    <Enabled>true</Enabled>
+                                    <Add>true</Add>
+                                    <Modify>true</Modify>
+                                    <Simple>*</Simple>
+                                </AttributeMapItem>
+                            </AttributeMap>
+                            <LinkCriteria>
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <LinkCriteriaItem>
+                                    <Key>writePersonByDN</Key>
+                                    <Attribute>$dn</Attribute>
+                                    <Operator>equals</Operator>
+                                    <Value>$$dn</Value>
+                                </LinkCriteriaItem>
+                            </LinkCriteria>
+                            <Hooks>
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <Hook name="default_ok">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>default_ok</Name>
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "success";
+tcb["$change"] = true;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                                <Hook name="modify_nochange">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>modify_nochange</Name>
+                                    <!-- Update mode found the entry already up to date. -->
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "unchanged";
+tcb["$change"] = false;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                                <Hook name="default_fail">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>default_fail</Name>
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "failed";
+tcb["$writeStatus"] = "failed";
+tcb["$change"] = false;
+tcb["$error"] = error;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                            </Hooks>
+                            <InitializeOption>1</InitializeOption>
+                        </Connector>
+                        <ScriptCondition><![CDATA[return "putEntry".equals(operation) || "modEntry".equals(operation);]]></ScriptCondition>
+                        <Conditions/>
+                        <MatchAny>false</MatchAny>
+                        <Enabled>true</Enabled>
+                        <Type>1</Type>
+                    </Branch>
+
+                    <!-- ELSE-IF: Delete (deleteEntry) -->
+                    <Branch name="ELSE-IF: Delete">
+                        <ModTime>1757635200000</ModTime>
+                        <Connector name="Delete Person">
+                            <InheritFrom>/Connectors/OpenLDAP</InheritFrom>
+                            <ModTime>1757635200000</ModTime>
+                            <ConnectorMode>Delete</ConnectorMode>
+                            <ConnectorState>Enabled</ConnectorState>
+                            <Configuration>
+                                <InheritFrom>[parent]</InheritFrom>
+                            </Configuration>
+                            <Parser>
+                                <InheritFrom>[parent]</InheritFrom>
+                            </Parser>
+                            <AttributeMap name="Input">
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                            </AttributeMap>
+                            <AttributeMap name="Output">
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                            </AttributeMap>
+                            <LinkCriteria>
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <LinkCriteriaItem>
+                                    <Key>deletePersonByDN</Key>
+                                    <Attribute>$dn</Attribute>
+                                    <Operator>equals</Operator>
+                                    <Value>$$dn</Value>
+                                </LinkCriteriaItem>
+                            </LinkCriteria>
+                            <Hooks>
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <Hook name="default_ok">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>default_ok</Name>
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "success";
+tcb["$change"] = true;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                                <Hook name="delete_nomatch">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>delete_nomatch</Name>
+                                    <!-- Nothing to delete - treat as a skipped (no-op) success. -->
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "skipped";
+tcb["$change"] = false;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                                <Hook name="default_fail">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>default_fail</Name>
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "failed";
+tcb["$writeStatus"] = "failed";
+tcb["$change"] = false;
+tcb["$error"] = error;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                            </Hooks>
+                            <InitializeOption>1</InitializeOption>
+                        </Connector>
+                        <ScriptCondition><![CDATA[return "deleteEntry".equals(operation);]]></ScriptCondition>
+                        <Conditions/>
+                        <MatchAny>false</MatchAny>
+                        <Enabled>true</Enabled>
+                        <Type>1</Type>
+                    </Branch>
+
+                    <ScriptCondition><![CDATA[return "person".equals(typeOfEntry);]]></ScriptCondition>
+                    <Conditions/>
+                    <MatchAny>false</MatchAny>
+                    <Enabled>true</Enabled>
+                    <Type>1</Type>
+                </Branch>
+
+                <!-- ELSE-IF: Entry is Group -->
+                <Branch name="ELSE-IF: Entry is Group">
+                    <ModTime>1757635200000</ModTime>
+
+                    <Script name="Build Group DN">
+                        <ModTime>1757635200000</ModTime>
+                        <parameter name="script"><![CDATA[rdnAttr = getProperty("flow.group.rdn", "cn");
+container = getProperty("flow.group.container", getProperty("target.ldap.searchBase", ""));
+existing = work.getString("$dn");
+if (existing == null || existing.length() == 0) {
+	rdnVal = work.getString(rdnAttr);
+	if (rdnVal != null && rdnVal.length() > 0) {
+		dn = rdnAttr + "=" + rdnVal;
+		if (container != null && container.length() > 0) dn = dn + "," + container;
+		work["$dn"] = dn;
+	}
+}]]></parameter>
+                    </Script>
+
+                    <!-- IF: FindEntry operation for Group -->
+                    <Branch name="IF: FindEntry operation for Group">
+                        <ModTime>1757635200000</ModTime>
+                        <Connector name="Find Group">
+                            <InheritFrom>/Connectors/OpenLDAP</InheritFrom>
+                            <ModTime>1757635200000</ModTime>
+                            <ConnectorMode>Lookup</ConnectorMode>
+                            <ConnectorState>Enabled</ConnectorState>
+                            <Configuration>
+                                <InheritFrom>[parent]</InheritFrom>
+                            </Configuration>
+                            <Parser>
+                                <InheritFrom>[parent]</InheritFrom>
+                            </Parser>
+                            <AttributeMap name="Input">
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <AttributeMapItem>
+                                    <Name>*</Name>
+                                    <Type>simple</Type>
+                                    <Enabled>true</Enabled>
+                                    <Simple>*</Simple>
+                                </AttributeMapItem>
+                            </AttributeMap>
+                            <AttributeMap name="Output">
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                            </AttributeMap>
+                            <LinkCriteria>
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <LinkCriteriaItem>
+                                    <Key>findGroupByDN</Key>
+                                    <Attribute>$dn</Attribute>
+                                    <Operator>equals</Operator>
+                                    <Value>$$dn</Value>
+                                </LinkCriteriaItem>
+                            </LinkCriteria>
+                            <Hooks>
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <Hook name="lookup_nomatch">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>lookup_nomatch</Name>
+                                    <Script><![CDATA[work.removeAllAttributes();
+task.setWork(null);
+tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "unchanged";
+tcb["$change"] = false;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                                <Hook name="default_ok">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>default_ok</Name>
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "unchanged";
+tcb["$change"] = false;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                                <Hook name="default_fail">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>default_fail</Name>
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "failed";
+tcb["$error"] = error;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                            </Hooks>
+                            <InitializeOption>1</InitializeOption>
+                        </Connector>
+                        <ScriptCondition><![CDATA[return "findEntry".equals(operation);]]></ScriptCondition>
+                        <Conditions/>
+                        <MatchAny>false</MatchAny>
+                        <Enabled>true</Enabled>
+                        <Type>0</Type>
+                    </Branch>
+
+                    <!-- ELSE-IF: Add or Modify for Group -->
+                    <Branch name="ELSE-IF: Add or Modify for Group">
+                        <ModTime>1757635200000</ModTime>
+                        <Connector name="Write Group">
+                            <InheritFrom>/Connectors/OpenLDAP</InheritFrom>
+                            <ModTime>1757635200000</ModTime>
+                            <ConnectorMode>Update</ConnectorMode>
+                            <ConnectorState>Enabled</ConnectorState>
+                            <Configuration>
+                                <InheritFrom>[parent]</InheritFrom>
+                                <parameter name="computeChanges">true</parameter>
+                            </Configuration>
+                            <Parser>
+                                <InheritFrom>[parent]</InheritFrom>
+                            </Parser>
+                            <AttributeMap name="Input">
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                            </AttributeMap>
+                            <AttributeMap name="Output">
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <AttributeMapItem>
+                                    <Name>$dn</Name>
+                                    <Type>advanced</Type>
+                                    <Enabled>true</Enabled>
+                                    <Add>true</Add>
+                                    <Modify>true</Modify>
+                                    <Script>work.getString("$dn");</Script>
+                                    <Simple>$dn</Simple>
+                                </AttributeMapItem>
+                                <AttributeMapItem>
+                                    <Name>*</Name>
+                                    <Type>simple</Type>
+                                    <Enabled>true</Enabled>
+                                    <Add>true</Add>
+                                    <Modify>true</Modify>
+                                    <Simple>*</Simple>
+                                </AttributeMapItem>
+                            </AttributeMap>
+                            <LinkCriteria>
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <LinkCriteriaItem>
+                                    <Key>writeGroupByDN</Key>
+                                    <Attribute>$dn</Attribute>
+                                    <Operator>equals</Operator>
+                                    <Value>$$dn</Value>
+                                </LinkCriteriaItem>
+                            </LinkCriteria>
+                            <Hooks>
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <Hook name="default_ok">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>default_ok</Name>
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "success";
+tcb["$change"] = true;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                                <Hook name="modify_nochange">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>modify_nochange</Name>
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "unchanged";
+tcb["$change"] = false;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                                <Hook name="default_fail">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>default_fail</Name>
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "failed";
+tcb["$writeStatus"] = "failed";
+tcb["$change"] = false;
+tcb["$error"] = error;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                            </Hooks>
+                            <InitializeOption>1</InitializeOption>
+                        </Connector>
+                        <ScriptCondition><![CDATA[return "putEntry".equals(operation) || "modEntry".equals(operation);]]></ScriptCondition>
+                        <Conditions/>
+                        <MatchAny>false</MatchAny>
+                        <Enabled>true</Enabled>
+                        <Type>1</Type>
+                    </Branch>
+
+                    <!-- ELSE-IF: Delete for Group -->
+                    <Branch name="ELSE-IF: Delete for Group">
+                        <ModTime>1757635200000</ModTime>
+                        <Connector name="Delete Group">
+                            <InheritFrom>/Connectors/OpenLDAP</InheritFrom>
+                            <ModTime>1757635200000</ModTime>
+                            <ConnectorMode>Delete</ConnectorMode>
+                            <ConnectorState>Enabled</ConnectorState>
+                            <Configuration>
+                                <InheritFrom>[parent]</InheritFrom>
+                            </Configuration>
+                            <Parser>
+                                <InheritFrom>[parent]</InheritFrom>
+                            </Parser>
+                            <AttributeMap name="Input">
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                            </AttributeMap>
+                            <AttributeMap name="Output">
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                            </AttributeMap>
+                            <LinkCriteria>
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <LinkCriteriaItem>
+                                    <Key>deleteGroupByDN</Key>
+                                    <Attribute>$dn</Attribute>
+                                    <Operator>equals</Operator>
+                                    <Value>$$dn</Value>
+                                </LinkCriteriaItem>
+                            </LinkCriteria>
+                            <Hooks>
+                                <InheritFrom>[no inheritance]</InheritFrom>
+                                <Hook name="default_ok">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>default_ok</Name>
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "success";
+tcb["$change"] = true;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                                <Hook name="delete_nomatch">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>delete_nomatch</Name>
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "success";
+tcb["$writeStatus"] = "skipped";
+tcb["$change"] = false;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                                <Hook name="default_fail">
+                                    <InheritFrom>[no inheritance]</InheritFrom>
+                                    <Name>default_fail</Name>
+                                    <Script><![CDATA[tcb = task.getTCB();
+tcb["$status"] = "failed";
+tcb["$writeStatus"] = "failed";
+tcb["$change"] = false;
+tcb["$error"] = error;]]></Script>
+                                    <Enabled>true</Enabled>
+                                </Hook>
+                            </Hooks>
+                            <InitializeOption>1</InitializeOption>
+                        </Connector>
+                        <ScriptCondition><![CDATA[return "deleteEntry".equals(operation);]]></ScriptCondition>
+                        <Conditions/>
+                        <MatchAny>false</MatchAny>
+                        <Enabled>true</Enabled>
+                        <Type>1</Type>
+                    </Branch>
+
+                    <ScriptCondition><![CDATA[return "group".equals(typeOfEntry);]]></ScriptCondition>
+                    <Conditions/>
+                    <MatchAny>false</MatchAny>
+                    <Enabled>true</Enabled>
+                    <Type>1</Type>
+                </Branch>
+
+            </ContainerDF>
+        </AssemblyLine>
+    </Folder>
+
+    <!-- ================================================================= -->
+    <!-- Resources > Connectors library                                     -->
+    <!-- ================================================================= -->
+    <Folder name="Connectors">
+
+        <!-- OpenLDAP library connector.
+             All of the operational connectors in WriteToTarget inherit from this one.
+             The connection parameters are pulled from the FDS Connection Settings page
+             through connectorParam(). -->
+        <Connector name="OpenLDAP">
+            <InheritFrom>system:/Connectors/ibmdi.LDAP</InheritFrom>
+            <ModTime>1757635200000</ModTime>
+            <ConnectorMode>Update</ConnectorMode>
+            <ConnectorState>Enabled</ConnectorState>
+            <Configuration>
+                <InheritFrom>[parent]</InheritFrom>
+                <parameter name="ldapUrl">@SUBSTITUTE{javascript return connectorParam("target.ldap.url");}</parameter>
+                <parameter name="ldapUsername">@SUBSTITUTE{javascript return connectorParam("target.ldap.user", "");}</parameter>
+                <parameter name="ldapPassword">@SUBSTITUTE{javascript return connectorParam("target.ldap.password", "");}</parameter>
+                <parameter name="ldapSearchBase">@SUBSTITUTE{javascript return connectorParam("target.ldap.searchBase", "");}</parameter>
+                <parameter name="ldapAuthenticationMethod">@SUBSTITUTE{javascript return connectorParam("target.ldap.authMethod", "Simple");}</parameter>
+                <parameter name="ldapUseSSL">@SUBSTITUTE{javascript return connectorParam("target.ldap.useSSL", "false");}</parameter>
+                <parameter name="ldapSearchScope">subtree</parameter>
+                <parameter name="ldapBinaryAttributes"><![CDATA[@SUBSTITUTE{javascript param = getProperty("target.ldap.binaryAttributes", null);
+if (param === null) return "";
+if (param.indexOf(",") > 0) atts = system.splitString(param, ",");
+else if (param.indexOf("\n") > 0) atts = system.splitString(param, "\n");
+else atts = system.splitString(param, " ");
+pstr = "";
+for (a in atts) pstr += a + "\n";
+return pstr;}]]></parameter>
+            </Configuration>
+            <Parser>
+                <InheritFrom>[parent]</InheritFrom>
+            </Parser>
+            <AttributeMap name="Input">
+                <InheritFrom>[no inheritance]</InheritFrom>
+            </AttributeMap>
+            <AttributeMap name="Output">
+                <InheritFrom>[no inheritance]</InheritFrom>
+            </AttributeMap>
+        </Connector>
+
+        <!-- GeneralSettings: builds the FDS Connection Settings page.
+             This connector is not executed - FDS reads its embedded form ($form$) to render
+             the connection fields, and the target.endpoint.AL parameter tells FDS which
+             AssemblyLine handles writes to the custom target. -->
+        <Connector name="GeneralSettings">
+            <InheritFrom>system:/Connectors/ibmdi.ScriptConnector</InheritFrom>
+            <ModTime>1757635200000</ModTime>
+            <ConnectorMode>Iterator</ConnectorMode>
+            <ConnectorState>Enabled</ConnectorState>
+            <Configuration>
+                <InheritFrom>[parent]</InheritFrom>
+                <parameter name="$form$"><![CDATA[<?xml version="1.0" encoding="UTF-8"?><MetamergeConfig main="Form" version="7.1.1">
+    <Form name="Form">
+        <ModTime>1757635200000</ModTime>
+        <FormItemNames>
+            <ListItem>target.ldap.url</ListItem>
+            <ListItem>target.ldap.authMethod</ListItem>
+            <ListItem>target.ldap.user</ListItem>
+            <ListItem>target.ldap.password</ListItem>
+            <ListItem>target.ldap.searchBase</ListItem>
+            <ListItem>target.ldap.useSSL</ListItem>
+            <ListItem>target.ldap.binaryAttributes</ListItem>
+        </FormItemNames>
+        <FormSectionNames>
+            <ListItem>General</ListItem>
+        </FormSectionNames>
+        <FormItem name="target.ldap.url">
+            <parameter name="Required">true</parameter>
+            <parameter name="description">URL of the OpenLDAP target directory, for example ldap://openldap.example.com:389</parameter>
+            <parameter name="label">OpenLDAP URL</parameter>
+            <parameter name="syntax">URL</parameter>
+        </FormItem>
+        <FormItem name="target.ldap.authMethod">
+            <Values>
+                <ListItem>Simple</ListItem>
+                <ListItem>Anonymous</ListItem>
+            </Values>
+            <parameter name="description">Bind method used to authenticate to OpenLDAP</parameter>
+            <parameter name="label">Authentication method</parameter>
+        </FormItem>
+        <FormItem name="target.ldap.user">
+            <parameter name="description">Bind DN, for example cn=admin,dc=example,dc=com</parameter>
+            <parameter name="label">Bind DN</parameter>
+            <parameter name="syntax">DN</parameter>
+        </FormItem>
+        <FormItem name="target.ldap.password">
+            <parameter name="description">Password for the bind DN</parameter>
+            <parameter name="label">Bind password</parameter>
+            <parameter name="syntax">PASSWORD</parameter>
+        </FormItem>
+        <FormItem name="target.ldap.searchBase">
+            <parameter name="description">Default base DN under which users and groups are written, for example dc=example,dc=com</parameter>
+            <parameter name="label">Target base DN</parameter>
+        </FormItem>
+        <FormItem name="target.ldap.useSSL">
+            <parameter name="description">Select to connect to OpenLDAP over SSL/TLS (ldaps)</parameter>
+            <parameter name="label">Use SSL</parameter>
+            <parameter name="syntax">boolean</parameter>
+        </FormItem>
+        <FormItem name="target.ldap.binaryAttributes">
+            <parameter name="description">List any custom binary attributes, one per line</parameter>
+            <parameter name="label">Binary attributes</parameter>
+            <parameter name="syntax">textarea</parameter>
+        </FormItem>
+        <FormSection name="General">
+            <ModTime>1757635200000</ModTime>
+            <FormSectionNames>
+                <ListItem>target.ldap.url</ListItem>
+                <ListItem>target.ldap.authMethod</ListItem>
+                <ListItem>target.ldap.user</ListItem>
+                <ListItem>target.ldap.password</ListItem>
+                <ListItem>target.ldap.searchBase</ListItem>
+                <ListItem>target.ldap.useSSL</ListItem>
+                <ListItem>target.ldap.binaryAttributes</ListItem>
+            </FormSectionNames>
+            <parameter name="title">OpenLDAP Connection Settings</parameter>
+        </FormSection>
+        <parameter name="title">General Settings</parameter>
+    </Form>
+</MetamergeConfig>]]></parameter>
+                <!-- Tells FDS that a custom target is in use and which AssemblyLine handles writes. -->
+                <parameter name="target.endpoint.AL">FDS_Target_OpenLDAP:/AssemblyLines/WriteToTarget</parameter>
+            </Configuration>
+            <Parser>
+                <InheritFrom>[parent]</InheritFrom>
+            </Parser>
+            <AttributeMap name="Input">
+                <InheritFrom>[parent]</InheritFrom>
+            </AttributeMap>
+            <AttributeMap name="Output">
+                <InheritFrom>[parent]</InheritFrom>
+            </AttributeMap>
+        </Connector>
+
+        <!-- FlowSettings: builds the FDS Flow Settings page shown when a flow is created or
+             edited. It adds the target-placement fields needed for an OpenLDAP target.
+             To expose the full set of standard FDS flow settings, copy the FlowSettings
+             connector from the LDAPSync project (Resources > Connectors) over this one. -->
+        <Connector name="FlowSettings">
+            <InheritFrom>system:/Connectors/ibmdi.ScriptConnector</InheritFrom>
+            <ModTime>1757635200000</ModTime>
+            <ConnectorMode>Iterator</ConnectorMode>
+            <ConnectorState>Enabled</ConnectorState>
+            <Configuration>
+                <InheritFrom>[parent]</InheritFrom>
+                <parameter name="$form$"><![CDATA[<?xml version="1.0" encoding="UTF-8"?><MetamergeConfig main="Form" version="7.1.1">
+    <Form name="Form">
+        <ModTime>1757635200000</ModTime>
+        <FormItemNames>
+            <ListItem>flow.person.objectClass</ListItem>
+            <ListItem>flow.person.rdn</ListItem>
+            <ListItem>flow.person.container</ListItem>
+            <ListItem>flow.group.objectClass</ListItem>
+            <ListItem>flow.group.rdn</ListItem>
+            <ListItem>flow.group.container</ListItem>
+            <ListItem>$GLOBAL.debug</ListItem>
+        </FormItemNames>
+        <FormSectionNames>
+            <ListItem>Person Entry details</ListItem>
+            <ListItem>Group Entry details</ListItem>
+            <ListItem>AssemblyLines To Call After Write Operations</ListItem>
+            <ListItem>Additional Settings</ListItem>
+        </FormSectionNames>
+        <FormItem name="flow.person.objectClass">
+            <parameter name="description">Object classes for a user in OpenLDAP, one per line (for example inetOrgPerson)</parameter>
+            <parameter name="label">Target person object class</parameter>
+            <parameter name="syntax">textarea</parameter>
+        </FormItem>
+        <FormItem name="flow.person.rdn">
+            <parameter name="description">RDN attribute used to build user DNs in OpenLDAP (for example uid)</parameter>
+            <parameter name="label">Target user RDN attribute</parameter>
+        </FormItem>
+        <FormItem name="flow.person.container">
+            <parameter name="description">Container DN under which users are written (defaults to the target base DN)</parameter>
+            <parameter name="label">Target container for users</parameter>
+        </FormItem>
+        <FormItem name="flow.group.objectClass">
+            <parameter name="description">Object classes for a group in OpenLDAP, one per line (for example groupOfNames)</parameter>
+            <parameter name="label">Target group object class</parameter>
+            <parameter name="syntax">textarea</parameter>
+        </FormItem>
+        <FormItem name="flow.group.rdn">
+            <parameter name="description">RDN attribute used to build group DNs in OpenLDAP (for example cn)</parameter>
+            <parameter name="label">Target group RDN attribute</parameter>
+        </FormItem>
+        <FormItem name="flow.group.container">
+            <parameter name="description">Container DN under which groups are written (defaults to the target base DN)</parameter>
+            <parameter name="label">Target container for groups</parameter>
+        </FormItem>
+        <FormItem name="$GLOBAL.debug">
+            <parameter name="description">Write detailed log messages for this flow</parameter>
+            <parameter name="label">Detailed Log</parameter>
+            <parameter name="syntax">boolean</parameter>
+        </FormItem>
+        <FormSection name="Person Entry details">
+            <ModTime>1757635200000</ModTime>
+            <FormSectionNames>
+                <ListItem>flow.person.objectClass</ListItem>
+                <ListItem>flow.person.rdn</ListItem>
+                <ListItem>flow.person.container</ListItem>
+            </FormSectionNames>
+            <parameter name="title">Person Entry details</parameter>
+        </FormSection>
+        <FormSection name="Group Entry details">
+            <ModTime>1757635200000</ModTime>
+            <FormSectionNames>
+                <ListItem>flow.group.objectClass</ListItem>
+                <ListItem>flow.group.rdn</ListItem>
+                <ListItem>flow.group.container</ListItem>
+            </FormSectionNames>
+            <parameter name="title">Group Entry details</parameter>
+        </FormSection>
+        <FormSection name="AssemblyLines To Call After Write Operations">
+            <ModTime>1757635200000</ModTime>
+            <FormSectionNames/>
+            <parameter name="title">AssemblyLines To Call After Write Operations</parameter>
+        </FormSection>
+        <FormSection name="Additional Settings">
+            <ModTime>1757635200000</ModTime>
+            <FormSectionNames>
+                <ListItem>$GLOBAL.debug</ListItem>
+            </FormSectionNames>
+            <parameter name="title">Additional Settings</parameter>
+        </FormSection>
+        <parameter name="title">Flow Settings</parameter>
+    </Form>
+</MetamergeConfig>]]></parameter>
+            </Configuration>
+            <Parser>
+                <InheritFrom>[parent]</InheritFrom>
+            </Parser>
+            <AttributeMap name="Input">
+                <InheritFrom>[parent]</InheritFrom>
+            </AttributeMap>
+            <AttributeMap name="Output">
+                <InheritFrom>[parent]</InheritFrom>
+            </AttributeMap>
+        </Connector>
+    </Folder>
+
+    <Folder name="Parsers"/>
+    <Folder name="Scripts"/>
+    <Folder name="AttributeMaps"/>
+    <Folder name="Functions"/>
+    <Folder name="Sequences"/>
+</MetamergeConfig>
