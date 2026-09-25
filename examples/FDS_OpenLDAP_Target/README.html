@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>README.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> or <div class="page"></div> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="synchronizing-ibm-verify-directory-to-openldap-with-fds-with-password-retention">Synchronizing IBM Verify Directory to OpenLDAP with FDS (with Password Retention)</h1>
+<blockquote>
+<p><strong>Sample / Example Guide:</strong> This guide and associated files are provided as an example showing how to configure IBM Verify Directory Integrator (VDI) Federated Directory Server (FDS) to synchronize identities into an OpenLDAP target while retaining user authentication passwords.</p>
+</blockquote>
+<hr>
+<h2 id="overview">Overview</h2>
+<p>This example demonstrates how to migrate and synchronize identity entries (users, groups, containers) from <strong>IBM Verify Directory (IVD)</strong> (or other supported LDAP sources) into <strong>OpenLDAP</strong> using <strong>IBM Verify Directory Integrator (VDI) Federated Directory Server (FDS)</strong>.</p>
+<p>FDS's stock writer already knows how to write persons, groups, and containers to any standard LDAP server when the target is configured as <em>generic LDAP</em> (<code>target.isLDAP=true</code>, <code>target.isTDS=false</code>).</p>
+<blockquote>
+<p><strong>The Key Configuration Setting:</strong>
+Two custom properties on the flow under <strong>Source → Advanced Settings → Custom properties</strong> (one per line):</p>
+<pre class="hljs"><code><div><span class="hljs-attr">target.isTDS</span>=<span class="hljs-string">false</span>
+<span class="hljs-attr">target.isLDAP</span>=<span class="hljs-string">true</span>
+</div></code></pre>
+<p>Without these properties, FDS assumes the target is an IBM Directory Server (IVD/ISVD) and attempts to write proprietary schema and metadata.</p>
+</blockquote>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart LR
+    subgraph Source["Source Directory"]
+        IVD["IBM Verify Directory (IVD)<br/>(Default: AES256 encryption)"]
+    end
+
+    subgraph FDS["IBM Verify Directory Integrator (VDI) / FDS"]
+        AdminRead["Admin Read (cn=root)<br/>Reads decrypted password"]
+        Map["customScript.js / migratePassword()<br/>• Plaintext &rarr; Hash to {SSHA}<br/>• Pre-hashed &rarr; Pass verbatim"]
+    end
+
+    subgraph Target["Target Directory"]
+        OpenLDAP["OpenLDAP Server<br/>(with fds-adDn schema)"]
+    end
+
+    IVD -->|Admin Read| AdminRead
+    AdminRead --> Map
+    Map -->|LDAP Add/Modify with adDn| OpenLDAP
+</div></code></pre>
+<hr>
+<h2 id="reference-documentation">Reference Documentation</h2>
+<ul>
+<li><a href="https://www.ibm.com/docs/en/vdi/11.0.0?topic=server-federated-directory">IBM Documentation: Federated Directory Server (v11.0.0)</a></li>
+<li><a href="https://www.ibm.com/docs/en/SSVDLE_11.0.0/pdf/ibm_svdi_fds_guide.pdf">IBM VDI Federated Directory Server Guide (PDF)</a></li>
+</ul>
+<hr>
+<h2 id="contents-of-this-sample">Contents of this Sample</h2>
+<pre class="hljs"><code><div>schema/
+  ├── fds-adDn.ldif             # OpenLDAP: adDn attribute + fdsSyncMetadata objectClass (load 1st)
+  ├── fds-linked-entry.ldif     # OpenLDAP: activedirectorylinkedentry + ibm-ptaReferral (load 2nd)
+  └── fds-adDn-index.ldif       # OpenLDAP: adDn equality index (ldapmodify, load 3rd)
+maps/
+  ├── customScript-additions.js # JavaScript password helper functions to append to customScript.js
+  └── person.map.patch          # Single-line person.map change for userPassword retention
+docker/                         # Optional throwaway OpenLDAP docker environment for testing
+test/                           # Maintainer checks for this example only. Not part of the FDS setup; ignore when implementing.
+</div></code></pre>
+<hr>
+<h2 id="verified-capabilities--scope">Verified Capabilities &amp; Scope</h2>
+<p>Tested against FDS on IBM Verify Directory Integrator (VDI) <strong>11.0.0.2</strong>, an IBM Verify Directory (IVD) source, and OpenLDAP (<code>mdb</code> backend).</p>
+<ul>
+<li><strong>Initial Synchronization</strong>: Users, containers, and groups synchronized end to end through the generic-LDAP target, including container creation and member DN translation via <code>adDn</code>.</li>
+<li><strong>Incremental Synchronization</strong>: Attribute modifications (e.g., changing <code>telephoneNumber</code>), additions, and member updates propagate cleanly to OpenLDAP.</li>
+<li><strong>Password Retention (Reversible IVD Passwords)</strong>: Validated against IVD default <code>ibm-slapdPwEncryption=AES256</code>. An admin read (<code>cn=root</code>) retrieves the cleartext value, which the helper hashes into a salted <code>{SSHA}</code> with an 8-byte salt before writing to OpenLDAP. Migrated users authenticate successfully via <code>ldapwhoami</code>.</li>
+<li><strong>Group Mapping</strong>: Translation of group classes during synchronization (e.g., <code>groupOfUniqueNames</code> with <code>uniqueMember</code> → <code>groupOfNames</code> with <code>member</code>) with member DNs mapped to the target subtree.</li>
+</ul>
+<hr>
+<h2 id="1-prerequisites">1. Prerequisites</h2>
+<ul>
+<li>A running <strong>IBM Verify Directory Integrator (VDI)</strong> instance with FDS configured and a working source endpoint that reads correctly.</li>
+<li>An <strong>OpenLDAP</strong> server with standard <code>core</code>, <code>cosine</code>, and <code>inetorgperson</code> schemas loaded (default across standard distributions). These support <code>inetOrgPerson</code>, <code>organizationalUnit</code>, <code>organization</code>, <code>domain</code>, <code>groupOfNames</code>, and <code>groupOfUniqueNames</code>.</li>
+<li>Administrative bind credentials on OpenLDAP with write access to <code>cn=config</code> (for schema additions) and the target data subtree.</li>
+</ul>
+<h3 id="11-load-schema-additions-into-openldap">1.1 Load Schema Additions into OpenLDAP</h3>
+<p>FDS stamps target entries with tracking metadata (<code>adDn</code>) and auxiliary link classes. Load these schema additions into OpenLDAP in the following order:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Why it is needed</th>
+<th>Example OID Arc</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>schema/fds-adDn.ldif</code></td>
+<td>FDS stamps each target entry with <code>adDn</code> (the entry's source DN) and resolves group members in the target by matching <code>adDn</code>. Also used for incremental moves/renames.</td>
+<td>RFC 4512 / RFC 5612 sample arc (<code>1.3.6.1.4.1.805361.1.1</code>, <code>.4</code>)</td>
+</tr>
+<tr>
+<td><code>schema/fds-linked-entry.ldif</code></td>
+<td>Stock FDS adds the auxiliary class <code>activedirectorylinkedentry</code> (<code>adDn</code> + <code>adObjectGUIDStr</code>) to entries and <code>ibm-ptaReferral</code> (<code>ibm-ptaLinkAttribute</code>/<code>ibm-ptaLinkValue</code>) to persons. OpenLDAP rejects writes without these definitions (<code>objectClass invalid per syntax</code> / <code>attribute type undefined</code>).</td>
+<td>RFC 4512 / RFC 5612 sample arc (<code>1.3.6.1.4.1.805361.1.3</code>, <code>.5</code>)</td>
+</tr>
+<tr>
+<td><code>schema/fds-adDn-index.ldif</code></td>
+<td>Every group member resolution performs an equality search on <code>(adDn=...)</code>. Without an index, slapd scans the entire database per member, leading to high latency on large directories.</td>
+<td>N/A</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note on Schema OIDs:</strong> The sample LDIF schema files use documentation example OIDs under the <code>1.3.6.1.4.1.805361.1.x</code> arc (per RFC 4512 / RFC 5612). For production deployments, substitute these with your organization's registered Private Enterprise Number (PEN) OID arc.</p>
+</blockquote>
+<h4 id="applying-schema-local-openldap">Applying Schema (Local OpenLDAP):</h4>
+<pre class="hljs"><code><div>ldapadd    -Y EXTERNAL -H ldapi:/// -f schema/fds-adDn.ldif
+ldapadd    -Y EXTERNAL -H ldapi:/// -f schema/fds-linked-entry.ldif
+ldapmodify -Y EXTERNAL -H ldapi:/// -f schema/fds-adDn-index.ldif
+</div></code></pre>
+<h4 id="applying-schema-containerized-openldap">Applying Schema (Containerized OpenLDAP):</h4>
+<pre class="hljs"><code><div>CID=&lt;container-name-or-id&gt;
+<span class="hljs-keyword">for</span> f <span class="hljs-keyword">in</span> fds-adDn fds-linked-entry fds-adDn-index; <span class="hljs-keyword">do</span> docker <span class="hljs-built_in">cp</span> schema/<span class="hljs-variable">$f</span>.ldif <span class="hljs-string">&quot;<span class="hljs-variable">$CID</span>&quot;</span>:/tmp/; <span class="hljs-keyword">done</span>
+docker <span class="hljs-built_in">exec</span> <span class="hljs-string">&quot;<span class="hljs-variable">$CID</span>&quot;</span> ldapadd    -Y EXTERNAL -H ldapi:/// -f /tmp/fds-adDn.ldif
+docker <span class="hljs-built_in">exec</span> <span class="hljs-string">&quot;<span class="hljs-variable">$CID</span>&quot;</span> ldapadd    -Y EXTERNAL -H ldapi:/// -f /tmp/fds-linked-entry.ldif
+docker <span class="hljs-built_in">exec</span> <span class="hljs-string">&quot;<span class="hljs-variable">$CID</span>&quot;</span> ldapmodify -Y EXTERNAL -H ldapi:/// -f /tmp/fds-adDn-index.ldif
+</div></code></pre>
+<blockquote>
+<p><strong>Index Target:</strong> <code>schema/fds-adDn-index.ldif</code> targets <code>olcDatabase={1}mdb,cn=config</code>. Confirm your database DN using:
+<code>ldapsearch -Y EXTERNAL -H ldapi:/// -b cn=config &quot;(olcSuffix=dc=example,dc=com)&quot; dn</code>
+If data already exists before applying the index, run <code>slapindex -b &quot;dc=example,dc=com&quot; adDn</code> while slapd is stopped.</p>
+</blockquote>
+<hr>
+<h2 id="2-configuring-fds">2. Configuring FDS</h2>
+<h3 id="21-initialize-fds-default-solution-files">2.1 Initialize FDS Default Solution Files</h3>
+<p>Open the FDS UI once (<code>https://&lt;vdi-host&gt;:&lt;port&gt;/fds</code>). On first access, FDS populates the solution directory: it creates <code>sdi_solution_dir/LDAPSync/</code> (stock mapping files and <code>customScript.js</code>) and places <code>LDAPSync.xml</code> and <code>SE_DefaultFDS.xml</code> in <code>sdi_solution_dir/configs/</code>.</p>
+<blockquote>
+<p><strong>Important:</strong> Never overwrite stock mapping files or <code>customScript.js</code> completely. Only append additions or make targeted line changes as described below.</p>
+</blockquote>
+<h3 id="22-configure-password-retention">2.2 Configure Password Retention</h3>
+<p>Stock FDS replaces the source password with a random string (<code>userPassword=generatePassword(null)</code>) under the assumption that pass-through authentication (PTA) will handle verification. For OpenLDAP targets, credentials must be retained and migrated:</p>
+<p>In <code>sdi_solution_dir/LDAPSync</code>:</p>
+<ol>
+<li><strong>Append JavaScript Helpers</strong>: Append the contents of <code>maps/customScript-additions.js</code> to the end of <code>customScript.js</code>. This provides <code>migratePassword()</code> and its internal helper functions (<code>pwValueToString</code>, <code>pwScheme</code>, <code>hashSSHA</code>, <code>sshaEncode</code>, <code>_b64manual</code>). If you already appended a copy previously, remove it first to avoid duplicate definitions.</li>
+<li><strong>Update User Password Mapping</strong>: In <code>person.map</code>, change the single line:<pre class="hljs"><code><div><span class="hljs-comment"># Change:</span>
+<span class="hljs-attr">userPassword</span>=<span class="hljs-string">generatePassword(null)</span>
+<span class="hljs-comment"># To:</span>
+<span class="hljs-attr">userPassword</span>=<span class="hljs-string">migratePassword(work)</span>
+</div></code></pre>
+</li>
+<li>Restart VDI so the modified script and map files are reloaded.</li>
+</ol>
+<h3 id="23-target-connection-settings">2.3 Target Connection Settings</h3>
+<p>In the FDS UI, navigate to <strong>Directory Server</strong> (left panel) → <strong>Connection Settings</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>LDAP URL</strong> / Host name / Port / <strong>Use SSL</strong></td>
+<td>Target OpenLDAP host, port (389 or 636), tick <strong>Use SSL</strong> for LDAPS</td>
+</tr>
+<tr>
+<td><strong>User Login / Password</strong></td>
+<td>OpenLDAP administrative bind DN and password</td>
+</tr>
+<tr>
+<td><strong>Default Target Container</strong></td>
+<td>OpenLDAP base DN (e.g., <code>dc=example,dc=com</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Click <strong>Test Connection</strong> to verify connectivity. Leave <strong>Write-back</strong> and <strong>Pass-through Authentication</strong> unconfigured (they are specific to IBM Directory Server targets).</p>
+<h3 id="24-flow-settings">2.4 Flow Settings</h3>
+<p>Create or edit your flow under the <strong>Flows</strong> tab:</p>
+<ol>
+<li>
+<p><strong>Switch FDS to Generic LDAP Mode:</strong>
+Go to <strong>Source → Advanced Settings → Custom properties</strong> and add (one per line):</p>
+<pre class="hljs"><code><div><span class="hljs-attr">target.isTDS</span>=<span class="hljs-string">false</span>
+<span class="hljs-attr">target.isLDAP</span>=<span class="hljs-string">true</span>
+</div></code></pre>
+<p><em>Note: Custom properties take precedence over UI fields and reliably override target behavior.</em></p>
+</li>
+<li>
+<p><strong>General Settings:</strong></p>
+<ul>
+<li>Enable <strong>Handle Person entries</strong> and <strong>Handle Group entries</strong>.</li>
+<li>If writing into fixed containers rather than mirroring source OU structure, leave <strong>Mirror the source hierarchy into Directory Server</strong> unchecked.</li>
+<li>Set <strong>Target container for Users</strong> (<code>target.suffixForUsers</code>, e.g., <code>ou=People,dc=example,dc=com</code>).</li>
+<li>Set <strong>Target container for Groups</strong> (<code>target.suffixForGroups</code>, e.g., <code>ou=Groups,dc=example,dc=com</code>).</li>
+<li>FDS automatically creates target containers if they do not exist.</li>
+</ul>
+</li>
+<li>
+<p><strong>User and Group Class Settings:</strong>
+Configure target object classes and attribute mappings:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>target.userObjectClass</code></td>
+<td>Object class(es) for persons</td>
+<td><code>inetOrgPerson</code></td>
+</tr>
+<tr>
+<td><code>target.userRDN</code></td>
+<td>RDN attribute for person DNs</td>
+<td><code>cn</code> (produces <code>cn=Alice Johnson,ou=People,...</code>)</td>
+</tr>
+<tr>
+<td><code>target.groupObjectClass</code></td>
+<td>Object class(es) for groups</td>
+<td><code>groupOfNames</code> (or <code>groupOfUniqueNames</code>)</td>
+</tr>
+<tr>
+<td><code>target.groupMemberAttribute</code></td>
+<td>Membership attribute name</td>
+<td><code>member</code> (or <code>uniqueMember</code>)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Pair Group Class and Member Attribute:</strong> Always pair <code>groupOfNames</code> with <code>member</code>, or <code>groupOfUniqueNames</code> with <code>uniqueMember</code>. Converting between them during synchronization is fully supported, but both properties must be updated together to avoid LDAP error 65 schema violations.</p>
+</blockquote>
+</li>
+</ol>
+<h3 id="25-extra-attributes-and-auxiliary-classes">2.5 Extra Attributes and Auxiliary Classes</h3>
+<ul>
+<li><strong>Additional Attributes:</strong> To synchronize attributes beyond standard <code>inetOrgPerson</code>, add them via the FDS Mapping editor or directly into <code>person.map</code> (e.g., <code>title=</code>, <code>employeeNumber=</code>), ensuring corresponding attributes exist in OpenLDAP schema.</li>
+<li><strong>Auxiliary Classes:</strong> <code>target.userObjectClass</code> and <code>target.groupObjectClass</code> accept comma-separated lists (e.g., <code>inetOrgPerson,customAuxClass</code>). Do not include spaces around commas.</li>
+</ul>
+<hr>
+<h2 id="3-password-handling--migration-details">3. Password Handling &amp; Migration Details</h2>
+<p><code>migratePassword()</code> evaluates incoming source credentials and determines the appropriate migration action:</p>
+<ol>
+<li><strong>Pre-hashed Passwords</strong>: If a password string begins with a scheme recognized by OpenLDAP (<code>{SSHA}</code>, <code>{SHA}</code>, <code>{SMD5}</code>, <code>{MD5}</code>, <code>{CRYPT}</code>, SHA-2 family, <code>{PBKDF2...}</code>, <code>{ARGON2}</code>), it is written <strong>verbatim</strong> without re-hashing to prevent double-hashing login failures.</li>
+<li><strong>Plaintext / Reversible Credentials</strong>: IVD defaults to <code>ibm-slapdPwEncryption=AES256</code> (reversible). When FDS binds as <code>cn=root</code>, IVD decrypts the password on read and returns cleartext. <code>migratePassword()</code> intercepts the cleartext and hashes it to salted <code>{SSHA}</code> using <code>java.security.MessageDigest</code> and <code>SecureRandom</code> before writing to OpenLDAP.</li>
+<li><strong>Un-decrypted AES Values</strong>: If an encrypted <code>{AES128}</code>/<code>{AES192}</code>/<code>{AES256}</code> string is received (indicating the bind user lacked decrypt privileges), FDS skips writing the password and logs a warning, preventing unresolvable encrypted blobs in OpenLDAP.</li>
+</ol>
+<h3 id="validating-source-password-schemes-prior-to-migration">Validating Source Password Schemes Prior to Migration</h3>
+<ol>
+<li>
+<p><strong>Survey existing hash schemes in IVD</strong> (run as an administrative bind):</p>
+<pre class="hljs"><code><div>ldapsearch -x -LLL -o ldif-wrap=no -H ldap://&lt;source-host&gt; -D &lt;admin-dn&gt; -W \
+  -b &lt;base-dn&gt; <span class="hljs-string">&quot;(userPassword=*)&quot;</span> userPassword | python3 -c <span class="hljs-string">&#x27;
+import sys,base64,re,collections
+c=collections.Counter()
+for l in sys.stdin:
+    if l.startswith(&quot;userPassword&quot;):
+        v=l.split(&quot;:&quot;,1)[1]
+        v=base64.b64decode(v[1:]).decode(&quot;utf-8&quot;,&quot;replace&quot;) if v.startswith(&quot;:&quot;) else v.strip()
+        m=re.match(r&quot;\{([^}]+)\}&quot;,v); c[m.group(1).upper() if m else &quot;CLEARTEXT&quot;]+=1
+for k,n in c.most_common(): print(n,k)&#x27;</span>
+</div></code></pre>
+<p><em>(Entries showing <code>CLEARTEXT</code> correspond to AES-encrypted reversible passwords returned decrypted to admin).</em></p>
+</li>
+<li>
+<p><strong>Test individual password schemes against OpenLDAP:</strong></p>
+<pre class="hljs"><code><div>ldapadd -x -H ldap://&lt;openldap-host&gt; -D &lt;admin-dn&gt; -W &lt;&lt;<span class="hljs-string">&#x27;LDIF&#x27;</span>
+dn: uid=schemetest,ou=People,dc=example,dc=com
+objectClass: inetOrgPerson
+uid: schemetest
+cn: schemetest
+sn: schemetest
+userPassword: &lt;stored-scheme-value&gt;
+LDIF
+
+ldapwhoami -x -H ldap://&lt;openldap-host&gt; -D <span class="hljs-string">&quot;uid=schemetest,ou=People,dc=example,dc=com&quot;</span> -w <span class="hljs-string">&#x27;&lt;password&gt;&#x27;</span>
+</div></code></pre>
+</li>
+<li>
+<p><strong>Verify Stored Passwords in OpenLDAP:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Stored Pattern in OpenLDAP</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{SSHA}</code> followed by ~40 base64 chars</td>
+<td>Successfully hashed by <code>migratePassword()</code> from plaintext source.</td>
+</tr>
+<tr>
+<td><code>{SSHA}...</code> identical to source</td>
+<td>Pre-hashed source password passed through verbatim.</td>
+</tr>
+<tr>
+<td>No <code>userPassword</code> present</td>
+<td>Source provided un-decrypted AES value or empty attribute; check flow logs.</td>
+</tr>
+<tr>
+<td><code>{AES256}...</code> or readable text</td>
+<td>Misconfiguration; check that <code>customScript.js</code> and <code>person.map</code> are properly updated.</td>
+</tr>
+</tbody>
+</table>
+</li>
+</ol>
+<hr>
+<h2 id="4-security-considerations">4. Security Considerations</h2>
+<ul>
+<li><strong>Enable LDAPS/TLS on All Connections:</strong> Ensure both source (IVD) and target (OpenLDAP) connections use TLS/LDAPS. Passwords decrypted in transit between IVD, VDI, and OpenLDAP must remain encrypted over the wire.</li>
+<li><strong>Log Sanitation &amp; Access:</strong> If an LDAP Add or Modify operation encounters an error, FDS writes the work entry dump to <code>LDAPSync/logs/Flow_&lt;name&gt;_LDAPMigrate.log</code>. Restrict file permissions on the <code>LDAPSync/logs</code> directory and rotate log files regularly. Ensure <code>global.debug</code> is disabled in production.</li>
+<li><strong>Privileged Bind Security:</strong> The administrative credentials (<code>cn=root</code>) required to read decrypted passwords from IVD must be protected, scoped strictly to migration tasks, and rotated upon completion where appropriate.</li>
+</ul>
+<hr>
+<h2 id="5-end-to-end-verification-procedure">5. End-to-End Verification Procedure</h2>
+<h3 id="51-initial-synchronization">5.1 Initial Synchronization</h3>
+<ol>
+<li>In the FDS UI, start <strong>Initial Synchronization</strong>.</li>
+<li>Query OpenLDAP to confirm entries were created with <code>adDn</code> metadata:<pre class="hljs"><code><div><span class="hljs-comment"># Check Users</span>
+ldapsearch -x -H ldap://localhost:389 -D <span class="hljs-string">&quot;cn=admin,dc=example,dc=com&quot;</span> -w adminpw \
+  -b <span class="hljs-string">&quot;dc=example,dc=com&quot;</span> <span class="hljs-string">&quot;(objectClass=inetOrgPerson)&quot;</span> dn adDn
+
+<span class="hljs-comment"># Check Groups &amp; Membership Translation</span>
+ldapsearch -x -H ldap://localhost:389 -D <span class="hljs-string">&quot;cn=admin,dc=example,dc=com&quot;</span> -w adminpw \
+  -b <span class="hljs-string">&quot;dc=example,dc=com&quot;</span> <span class="hljs-string">&quot;(|(objectClass=groupOfNames)(objectClass=groupOfUniqueNames))&quot;</span> \
+  dn member uniqueMember
+</div></code></pre>
+</li>
+<li>Test authentication for a migrated user:<pre class="hljs"><code><div>ldapwhoami -x -H ldap://localhost:389 \
+  -D <span class="hljs-string">&quot;cn=Alice Johnson,ou=People,dc=example,dc=com&quot;</span> -w <span class="hljs-string">&#x27;SecretPassword123&#x27;</span>
+</div></code></pre>
+</li>
+</ol>
+<h3 id="52-incremental-synchronization">5.2 Incremental Synchronization</h3>
+<ol>
+<li>Update an attribute (e.g., <code>telephoneNumber</code>) on a user in IVD.</li>
+<li>In FDS, trigger <strong>Incremental Synchronization</strong>.</li>
+<li>Verify that the updated attribute value is reflected in OpenLDAP.</li>
+<li>Verify user authentication remains functional after attribute modification.</li>
+</ol>
+<hr>
+<h2 id="6-troubleshooting">6. Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Issue / Error</th>
+<th>Cause</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LDAP error code 21 ... objectClass: value #1 invalid per syntax</code> on group, or <code>error code 17 ... ibm-ptaLinkValue: attribute type undefined</code> on person</td>
+<td>OpenLDAP target is missing auxiliary link or PTA schema definitions.</td>
+<td>Load <code>schema/fds-linked-entry.ldif</code> (after <code>schema/fds-adDn.ldif</code>) into OpenLDAP <code>cn=config</code>.</td>
+</tr>
+<tr>
+<td><code>LDAP error code 65 - object class 'groupOfNames' requires attribute 'member'</code></td>
+<td>Group object class and member attribute configuration disagree (e.g., <code>groupOfNames</code> configured with <code>uniqueMember</code>).</td>
+<td>Ensure <code>target.groupObjectClass=groupOfNames</code> and <code>target.groupMemberAttribute=member</code> (or <code>groupOfUniqueNames</code> and <code>uniqueMember</code>) are set consistently in flow properties.</td>
+</tr>
+<tr>
+<td><code>CTGDII572I Skipping member because no entry was found in the target</code></td>
+<td>Member DN translation failed because the referenced person entry was not found in OpenLDAP by <code>adDn</code>.</td>
+<td>Ensure person entries are synchronized before groups. Resolve any errors affecting person entries first.</td>
+</tr>
+<tr>
+<td><code>CTGDIS183E Error while mapping attribute 'userPassword'</code></td>
+<td>Exception occurred inside <code>migratePassword()</code> script execution.</td>
+<td>Check <code>customScript.js</code> to ensure additions were appended cleanly without duplicate function declarations, and restart VDI.</td>
+</tr>
+<tr>
+<td>Missing stock functions (<code>groupObjectClass</code> / <code>userObjectClass</code> not found)</td>
+<td>Stock <code>customScript.js</code> or map files were overwritten instead of appended.</td>
+<td>Restore pristine copies of stock map files and <code>customScript.js</code> from <code>sdi_install_dir/LDAPSync/</code>, then re-apply section 2.2 edits.</td>
+</tr>
+<tr>
+<td><code>objectClass/attribute undefined</code> on entry write</td>
+<td>Custom attribute or class is not defined in OpenLDAP schema.</td>
+<td>Add missing attribute/class definitions to OpenLDAP schema before synchronizing.</td>
+</tr>
+<tr>
+<td>Password authentication fails for SHA-2 hashes (<code>{SSHA256}</code> / <code>{SSHA512}</code>)</td>
+<td>OpenLDAP lacks SHA-2 password hashing module support.</td>
+<td>Load OpenLDAP's <code>pw-sha2</code> contrib module into <code>cn=config</code>.</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="7-known-constraints--notes">7. Known Constraints &amp; Notes</h2>
+<ul>
+<li><strong>Generic-LDAP Target Limitations:</strong> Pass-through authentication (PTA) and SDS-specific write-back are proprietary to IBM Directory Server targets and are not available when targeting generic OpenLDAP.</li>
+<li><strong>Index Requirement:</strong> The <code>adDn</code> equality index in OpenLDAP is strongly recommended to maintain performance during group member translation searches.</li>
+<li><strong>Source Changelog Dependency:</strong> If the source endpoint lacks a changelog and an entry's DN changes after the initial sync, <code>moddn</code>/<code>modrdn</code> operations may not automatically propagate on incremental runs without a changelog connector.</li>
+</ul>
+
+</body>
+</html>

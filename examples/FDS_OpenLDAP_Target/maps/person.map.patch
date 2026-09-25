@@ -1,0 +1,20 @@
+# person.map — password-retention change (the ONLY stock mapping change needed)
+#
+# Stock FDS deliberately discards the source password (pass-through-auth model):
+#     userPassword=generatePassword(null)
+#
+# To RETAIN credentials into OpenLDAP, edit the stock
+# sdi_solution_dir/LDAPSync/person.map and change that single line to:
+#
+#     userPassword=migratePassword(work)
+#
+# migratePassword() is provided by customScript-additions.js (append it to the
+# stock LDAPSync/customScript.js). It passes {scheme}-prefixed hashes through
+# verbatim and hashes cleartext (IVD AES-decrypted) to {SSHA} before writing.
+#
+# Minimal alternative with NO custom function (cleartext stays cleartext at rest):
+#     userPassword=work.userPassword
+#
+# Do NOT replace stock person.map wholesale — every other line (objectClass via
+# userObjectClass(work)/target.userObjectClass, RDN, attributes) is correct as
+# shipped, and adDn is set by the FDS engine, not mapped.

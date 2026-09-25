@@ -1,0 +1,27 @@
+# OpenLDAP: equality index on adDn (performance; strongly recommended).
+#
+# FDS translates group members by searching the target for the person whose
+# adDn equals the member's source DN — one subtree search per member:
+#   SRCH base="dc=example,dc=com" scope=2 filter="(adDn=uid=testuser1,...)"
+# Without an index slapd logs "mdb_equality_candidates: (adDn) not indexed" and
+# scans the whole database for every member, which becomes very slow for real
+# directories. With this index each lookup is a direct hit.
+#
+# Apply AFTER fds-adDn.ldif (which defines the adDn attribute), and preferably
+# BEFORE loading data. Use ldapmodify (this is a modify, not an add):
+#   ldapmodify -Y EXTERNAL -H ldapi:/// -f fds-adDn-index.ldif
+# (For a containerized OpenLDAP, copy the file in and run ldapmodify inside the
+# container — see the README.)
+#
+# The database entry name varies by image/config. The default for osixia/openldap
+# and stock Debian/Ubuntu packages is {1}mdb. Confirm yours with:
+#   ldapsearch -Y EXTERNAL -H ldapi:/// -b cn=config "(olcSuffix=dc=example,dc=com)" dn
+# and edit the dn below if it differs (e.g. olcDatabase={2}mdb,cn=config).
+#
+# If the database already contains entries, the new index only covers writes made
+# after it is added. Re-index existing data with slapd stopped:
+#   slapindex -b "dc=example,dc=com" adDn
+dn: olcDatabase={1}mdb,cn=config
+changetype: modify
+add: olcDbIndex
+olcDbIndex: adDn eq

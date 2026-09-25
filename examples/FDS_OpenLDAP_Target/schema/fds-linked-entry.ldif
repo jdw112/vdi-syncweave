@@ -1,0 +1,54 @@
+# OpenLDAP cn=config schema: the "linked entry" + PTA-referral definitions that
+# stock FDS writes to a generic LDAP target (target.isLDAP=true).
+#
+# Stock FDS (LDAPSync) stamps every target entry with an auxiliary class that
+# links it back to its source entry, and (for TDS sources) person entries with
+# the ibm-ptaReferral class. IBM Security Directory Server ships these
+# definitions; OpenLDAP does not, so without this file the adds fail with
+#   objectClass: value #1 invalid per syntax           (activedirectorylinkedentry)
+#   ibm-ptaLinkValue: attribute type undefined         (ibm-ptaReferral)
+#
+# Names match the LDAPSync defaults (target.ldap.auxLinkedEntryClassName =
+# activedirectorylinkedentry, ...auxLinkedDNAttribute = adDn,
+# ...auxLinkedGUIDAttribute = adObjectGUIDStr), so no flow property is needed.
+#
+# LOAD ORDER: fds-adDn.ldif first (defines adDn), then this file.
+#   ldapadd -Y EXTERNAL -H ldapi:/// -f fds-linked-entry.ldif
+# (For a containerized OpenLDAP, copy the file in and run ldapadd inside the
+# container, see the README.)
+#
+# OIDs use the same private arc as fds-adDn.ldif (1.3.6.1.4.1.805361), attribute
+# types continuing under .1, object classes under .5. Replace with your
+# registered arc if desired. The PTA classes are only meaningful to IBM
+# Directory Server; here they exist purely so the stock writer's add
+# succeeds. To avoid writing them at all, see README (supportsPTA=false).
+dn: cn=fds-linked-entry,cn=schema,cn=config
+objectClass: olcSchemaConfig
+cn: fds-linked-entry
+olcAttributeTypes: ( 1.3.6.1.4.1.805361.1.3
+  NAME 'adObjectGUIDStr'
+  DESC 'Source object GUID (string) recorded by FDS'
+  EQUALITY caseIgnoreMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+olcAttributeTypes: ( 1.3.6.1.4.1.805361.1.4
+  NAME 'ibm-ptaLinkAttribute'
+  DESC 'Pass-through authentication link attribute written by FDS'
+  EQUALITY caseIgnoreMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+  SINGLE-VALUE )
+olcAttributeTypes: ( 1.3.6.1.4.1.805361.1.5
+  NAME 'ibm-ptaLinkValue'
+  DESC 'Pass-through authentication link value written by FDS'
+  EQUALITY caseIgnoreMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+  SINGLE-VALUE )
+olcObjectClasses: ( 1.3.6.1.4.1.805361.5.1
+  NAME 'activedirectorylinkedentry'
+  DESC 'Auxiliary class linking a target entry to its FDS source entry'
+  AUXILIARY
+  MAY ( adDn $ adObjectGUIDStr ) )
+olcObjectClasses: ( 1.3.6.1.4.1.805361.5.2
+  NAME 'ibm-ptaReferral'
+  DESC 'Auxiliary class carrying pass-through authentication link data'
+  AUXILIARY
+  MAY ( ibm-ptaLinkAttribute $ ibm-ptaLinkValue ) )

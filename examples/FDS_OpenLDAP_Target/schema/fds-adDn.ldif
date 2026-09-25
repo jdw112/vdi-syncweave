@@ -1,0 +1,16 @@
+# OpenLDAP cn=config schema for FDS sync metadata.
+# Load: ldapadd -Y EXTERNAL -H ldapi:/// -f fds-adDn.ldif
+# OIDs use arc 1.3.6.1.4.1.805361 (attributeTypes under .1, objectClasses under .4)
+dn: cn=fds-addn,cn=schema,cn=config
+objectClass: olcSchemaConfig
+cn: fds-addn
+olcAttributeTypes: ( 1.3.6.1.4.1.805361.1.1
+  NAME 'adDn'
+  DESC 'Source distinguished name recorded by FDS for sync/translation'
+  EQUALITY caseIgnoreMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+olcObjectClasses: ( 1.3.6.1.4.1.805361.4.1
+  NAME 'fdsSyncMetadata'
+  DESC 'Auxiliary class holding FDS synchronization metadata'
+  AUXILIARY
+  MAY ( adDn ) )
