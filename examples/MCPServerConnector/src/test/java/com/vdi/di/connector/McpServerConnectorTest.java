@@ -303,10 +303,11 @@ class McpServerConnectorTest {
     }
 
     @Test
-    void originAllowlistRequiresMatchingOrigin() throws Exception {
+    void originAllowlistValidatesPresentOriginAndAllowsMissing() throws Exception {
         conn.params.put("allowedOrigins", "https://a.example, https://b.example");
+        // Missing Origin passes: non-browser clients (curl, SDKs) send none; bearer auth is the boundary.
         conn.processRequest(post(rpc("tools/list", "1", null)));
-        assertStatus("403 Forbidden"); // missing Origin is rejected once an allowlist exists
+        assertStatus("200 OK");
 
         conn.replies.clear();
         Entry bad = post(rpc("tools/list", "1", null));
