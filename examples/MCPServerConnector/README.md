@@ -25,6 +25,14 @@ mvn -Dvdi.home=/path/to/ISVDI package
 
 `vdi.home` defaults to the `VDI_HOME` environment variable if `-Dvdi.home` is omitted.
 
+## Test
+
+```
+mvn -Dvdi.home=/path/to/ISVDI test
+```
+
+28 JUnit 5 tests cover the JSON-RPC/MCP layer and transport gates (initialize/version negotiation, tools/list, tools/call work-Entry mapping, reserved `$mcp.*` argument protection, actor header, reply mapping and no-leak behavior, bearer/Origin/path/method/size/protocol-version checks, health probe). They run without a socket or running VDI; the platform jars are needed on the test classpath only (see `pom.xml`).
+
 ## Deploy
 
 Copy the built jar (`target/mcp-server-connector.jar`) to `VDI_install_dir/jars/connectors/`, restart the Config Editor / server, and the `MCPServerConnector` connector appears under Connectors. See [docs/CONFIGURE.md](docs/CONFIGURE.md) to build the AssemblyLine and connect a client.
