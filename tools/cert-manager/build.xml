@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright contributors to the SyncWeave project
+  SPDX-License-Identifier: Apache-2.0
+
+  Ant build file for the SDI Certificate Manager tool.
+  Lives at:  tools/cert-manager/build.xml
+
+  Can be invoked two ways:
+    1. Via root build.xml:  ant cert-manager  /  ant cert-manager-test
+    2. Standalone:          ant -f tools/cert-manager/build.xml jar
+                            ant -f tools/cert-manager/build.xml test
+
+  Primary targets:
+    resolve       Fetch dependencies via Ivy into build/lib/
+    compile       Compile all Java sources
+    jar           Build the runnable fat JAR  (default)
+    test-compile  Compile test sources
+    test          Run JUnit 5 tests via ConsoleLauncher
+    clean         Remove all generated artefacts
+
+  NOTE on compiler flags:
+    We use the release compilerarg instead of source/target attributes.
+    The root build imports tools_setup.xml which can inject a java.version
+    property containing the full JVM version string (e.g. "21.0.12"), which
+    javac rejects as an invalid target release.
+
+  NOTE on test runner:
+    The EPEL ant-1.10.9 package does not ship ant-junitlauncher.jar so
+    built-in junitlauncher task is unavailable. We use the JUnit Platform
+    ConsoleLauncher directly via a java task instead
+-->
+<project xmlns:ivy="antlib:org.apache.ivy.ant"
+         name="cert-manager"
+         default="jar"
+         basedir=".">
+
+  <!-- ===================================================================
+       Properties
+       =================================================================== -->
+
+  <property name="src.dir"       value="${basedir}/src"/>
+  <property name="test.dir"      value="${basedir}/test"/>
+  <property name="res.dir"       value="${basedir}/resources"/>
+  <property name="build.dir"     value="${basedir}/build"/>
+  <property name="classes.dir"   value="${build.dir}/classes"/>
+  <property name="test.classes"  value="${build.dir}/test-classes"/>
+  <property name="lib.dir"       value="${build.dir}/lib"/>
+  <property name="jar.file"      value="${build.dir}/cert-manager.jar"/>
+  <property name="test.reports"  value="${build.dir}/test-reports"/>
+
+  <property name="ivy.settings.file" value="${basedir}/../../ivysettings.xml"/>
+
+  <!-- ===================================================================
+       Ivy resolve - Ivy 2.5 three-step pattern
+       =================================================================== -->
+
+  <target name="resolve" description="Retrieve dependencies via Ivy">
+    <ivy:configure file="${ivy.settings.file}" override="true"/>
+    <ivy:resolve  file="${basedir}/ivy.xml" refresh="false"/>
+    <ivy:retrieve pattern="${lib.dir}/default/[artifact]-[revision].[ext]"
+                  conf="default" log="download-only"/>
+    <ivy:retrieve pattern="${lib.dir}/test/[artifact]-[revision].[ext]"
+                  conf="test"    log="download-only"/>
+    <echo message="[cert-manager] Dependencies resolved to ${lib.dir}"/>
+  </target>
+
+  <!-- ===================================================================
+       Init
+       =================================================================== -->
+
+  <target name="init" depends="resolve">
+    <mkdir dir="${classes.dir}"/>
+    <mkdir dir="${test.classes}"/>
+    <mkdir dir="${test.reports}"/>
+
+    <path id="compile.classpath">
+      <fileset dir="${lib.dir}/default" includes="*.jar"/>
+    </path>
+
+    <path id="test.classpath">
+      <pathelement location="${classes.dir}"/>
+      <pathelement location="${test.classes}"/>
+      <fileset dir="${lib.dir}/default" includes="*.jar"/>
+      <fileset dir="${lib.dir}/test"    includes="*.jar"/>
+    </path>
+  </target>
+
+  <!-- ===================================================================
+       Compile
+       =================================================================== -->
+
+  <target name="compile" depends="init" description="Compile main sources">
+    <javac srcdir="${src.dir}"
+           destdir="${classes.dir}"
+           encoding="UTF-8"
+           includeantruntime="false"
+           debug="true">
+      <classpath refid="compile.classpath"/>
+      <compilerarg value="--release"/>
+      <compilerarg value="21"/>
+      <compilerarg value="-Xlint:all"/>
+      <compilerarg value="-Xlint:-processing"/>
+      <compilerarg value="-Xlint:-options"/>
+      <compilerarg value="-Xlint:-this-escape"/>
+    </javac>
+    <copy todir="${classes.dir}">
+      <fileset dir="${res.dir}" includes="**/*"/>
+    </copy>
+  </target>
+
+  <!-- ===================================================================
+       Fat JAR
+       =================================================================== -->
+
+  <target name="jar" depends="compile" description="Build runnable fat JAR">
+    <jar destfile="${jar.file}"
+         filesetmanifest="skip"
+         duplicate="preserve">
+      <manifest>
+        <attribute name="Main-Class"             value="com.ibm.di.certmgr.CertManagerMain"/>
+        <attribute name="Implementation-Title"   value="SDI Certificate Manager"/>
+        <attribute name="Implementation-Version" value="1.0.0"/>
+      </manifest>
+      <fileset dir="${classes.dir}"/>
+      <zipgroupfileset dir="${lib.dir}/default" includes="*.jar"
+                       excludes="*-sources.jar,*-javadoc.jar"/>
+    </jar>
+    <echo message="[cert-manager] Built: ${jar.file}"/>
+  </target>
+
+  <!-- ===================================================================
+       Test compile
+       =================================================================== -->
+
+  <target name="test-compile" depends="compile"
+          description="Compile test sources">
+    <javac srcdir="${test.dir}"
+           destdir="${test.classes}"
+           encoding="UTF-8"
+           includeantruntime="false"
+           debug="true">
+      <classpath refid="test.classpath"/>
+      <compilerarg value="--release"/>
+      <compilerarg value="21"/>
+      <compilerarg value="-Xlint:-options"/>
+    </javac>
+  </target>
+
+  <!-- ===================================================================
+       Run tests via JUnit Platform ConsoleLauncher.
+
+       The EPEL ant package does not ship ant-junitlauncher.jar so we
+       invoke the ConsoleLauncher directly.  It exits non-zero on any
+       test failure, which causes the java task to fail the build when
+       failonerror="true".
+       =================================================================== -->
+
+  <target name="test" depends="test-compile"
+          description="Run JUnit 5 tests via ConsoleLauncher">
+    <java classname="org.junit.platform.console.ConsoleLauncher"
+          fork="true"
+          failonerror="true">
+      <classpath refid="test.classpath"/>
+      <arg value="--scan-classpath"/>
+      <arg value="${test.classes}"/>
+      <arg value="--reports-dir"/>
+      <arg value="${test.reports}"/>
+      <arg value="--fail-if-no-tests"/>
+    </java>
+    <echo message="[cert-manager] Tests complete. Reports: ${test.reports}"/>
+  </target>
+
+  <!-- ===================================================================
+       Clean
+       =================================================================== -->
+
+  <target name="clean" description="Remove all generated artefacts">
+    <delete dir="${build.dir}"/>
+    <echo message="[cert-manager] Cleaned."/>
+  </target>
+
+</project>

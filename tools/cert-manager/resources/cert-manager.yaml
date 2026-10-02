@@ -1,0 +1,66 @@
+# SDI Certificate Manager — Default Configuration
+# Copy to cert-manager.yaml and customise per environment.
+# Environment variable overrides: SDI_CERT_MGR_<KEY> (e.g. SDI_CERT_MGR_LOG_LEVEL=DEBUG)
+
+application:
+  name: "SDI Certificate Manager"
+  version: "1.0.0"
+  log_level: "INFO"   # DEBUG | INFO | WARNING | ERROR
+
+logging:
+  directory: "./logs"
+  max_bytes: 10485760   # 10 MB
+  backup_count: 5
+  audit_enabled: true
+
+paths:
+  install_dir: null     # Prompt if not set
+  solution_dir: null    # Prompt if not set
+  jks_file: null        # Prompt if not set
+
+platform_paths:
+  windows:
+    default_install_dir: "C:/Program Files/IBM/SVDI"
+    default_solution_dir: null
+  linux:
+    default_install_dir: "/opt/IBM/TDI/V7.2"
+    default_solution_dir: null
+  aix:
+    default_install_dir: "/opt/IBM/TDI/V7.2"
+    default_solution_dir: null
+
+certificates:
+  default_validity: 1095   # 3 years in days
+  default_keysize: 2048
+  default_keyalg: "RSA"
+  default_storetype: "JKS"
+  default_dname:
+    CN: "API Admin"
+    OU: "test"
+    O: "test"
+    L: "test"
+    ST: "test"
+    C: "US"
+
+network:
+  default_port: 443
+  connection_timeout: 10   # seconds
+  allow_self_signed: false
+
+security:
+  min_password_length: 8
+  require_password_complexity: true
+
+backup:
+  enabled: true
+  auto_backup_before_changes: true
+
+features:
+  enable_registry_update: true
+  enable_san_support: true
+  enable_pkcs12_conversion: true
+  enable_quick_import: true
+
+ui:
+  show_progress: true
+  confirm_destructive_actions: true

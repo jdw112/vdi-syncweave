@@ -37,4 +37,15 @@
 			<location>C:/stadheim/di70/build/src/com/ibm/di/admin/images</location>
 		</link>
 	</linkedResources>
+	<filteredResources>
+		<filter>
+			<id>1788317973539</id>
+			<name></name>
+			<type>30</type>
+			<matcher>
+				<id>org.eclipse.core.resources.regexFilterMatcher</id>
+				<arguments>node_modules|\.git|__CREATED_BY_JAVA_LANGUAGE_SERVER__</arguments>
+			</matcher>
+		</filter>
+	</filteredResources>
 </projectDescription>
