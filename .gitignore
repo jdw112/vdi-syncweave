@@ -34,15 +34,6 @@ tools/eclipse/eclipse_runtime/**/p2/**/cache/
 # (e.g. axis2-kernel.jar) are tracked; the versioned originals are not.
 lib/ivy/**/*-[0-9]*.jar
 lib/ivy/**/*_[0-9]*.jar
+adks/ibm/jdk/
+adks/ibm/jre/
 
-# cert-manager tool — compiled output and test artefacts
-tools/cert-manager/build/
-unit_tests/
-test_run.log
-unit_tests_build.log
-
-# cert-manager tool - compiled output and test artefacts
-tools/cert-manager/build/
-unit_tests/
-test_run.log
-unit_tests_build.log

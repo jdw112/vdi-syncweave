@@ -815,15 +815,6 @@
   </target>
 
    <!-- TARGET FOR OSGi BUILD: depends on ce rcp due to language files -->
-  <!-- TARGET FOR CERT-MANAGER TOOL BUILD -->
-  <target name="cert-manager" description="Build the SDI Certificate Manager CLI tool">
-    <ant antfile="build.xml" dir="tools/cert-manager" inheritall="false"/>
-  </target>
-
-  <target name="cert-manager-test" description="Build and run SDI Certificate Manager unit tests">
-    <ant antfile="build.xml" dir="tools/cert-manager" target="test" inheritall="false"/>
-  </target>
-
   <target name="build-osgi">
     <ant antfile="build.xml" dir="osgi" inheritall="false"/>
   </target>
