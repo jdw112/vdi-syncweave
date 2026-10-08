@@ -36,9 +36,10 @@ if not exist "%~1" (
 	exit /b 1
 )
 
-if "%~1" == "." (set SOL_DIR=.) else (set SOL_DIR="%~f1")
+if "%~1" == "." (set SOL_DIR=.) else (set SOL_DIR=%~f1)
+if not "%SOL_DIR%"=="." if "%SOL_DIR:~-1%"=="\" set SOL_DIR=%SOL_DIR:~0,-1%
 
-if exist %SOL_DIR% goto FOUND_SOLDIR
+if exist "%SOL_DIR%" goto FOUND_SOLDIR
 
 
 @rem

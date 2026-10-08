@@ -252,6 +252,14 @@ public class OSGiLauncher {
 				System.setProperty(OSGI_INSTALL_AREA, platformDirectory.toURL().toExternalForm());
 			}
 
+			// make sure "osgi.syspath" points to <install_dir>/plugins so that
+			// Equinox can resolve simple bundle references (e.g. javax.servlet)
+			// when the solution directory differs from the install directory.
+			if (System.getProperty("osgi.syspath") == null) {
+				File pluginsPath = new File(platformDirectory, "plugins");
+				System.setProperty("osgi.syspath", pluginsPath.getAbsolutePath());
+			}
+
 			// make sure the "osgi.configuration.area" is set
 			if (System.getProperty(OSGI_CONFIGURATION_AREA) == null) {
 				// the default place is "<sol_dir>/osgi/configuration"

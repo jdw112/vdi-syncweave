@@ -6,8 +6,14 @@ cscope.out
 ncscope.out
 build.log
 
+# Build output - populated by the Ant/PDE headless build; never committed.
+export/
 
-# Eclipse PDE headless-build runtime state — regenerated on every build run.
+# Packaged distribution archives - produced by the ship/packaging step.
+ship/
+
+
+# Eclipse PDE headless-build runtime state - regenerated on every build run.
 # These are mutable workspace/OSGi/P2 state files inside the tools tree and
 # must never be committed; they change sequence numbers each run and will
 # cause spurious conflicts.
@@ -30,7 +36,7 @@ tools/eclipse/eclipse_runtime/**/plugins/com.ibm.di.config_*.jar
 tools/eclipse/eclipse_runtime/**/configuration/*.log
 # Eclipse p2 repository cache (artifacts/content jars and composite XMLs)
 tools/eclipse/eclipse_runtime/**/p2/**/cache/
-# Ivy-downloaded versioned JARs in lib/ivy/ — the version-stripped copies
+# Ivy-downloaded versioned JARs in lib/ivy/ - the version-stripped copies
 # (e.g. axis2-kernel.jar) are tracked; the versioned originals are not.
 lib/ivy/**/*-[0-9]*.jar
 lib/ivy/**/*_[0-9]*.jar

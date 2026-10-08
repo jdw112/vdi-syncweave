@@ -26,6 +26,8 @@ set TDI_SOLDIR_TMP=###%TDI_SOLDIR%###
 set TDI_SOLDIR_TMP=%TDI_SOLDIR_TMP:"###=%
 set TDI_SOLDIR_TMP=%TDI_SOLDIR_TMP:###"=%
 set TDI_SOLDIR=%TDI_SOLDIR_TMP:###=%
+rem Resolve to absolute path so relative values (e.g. ".") do not break the file:/// URI
+for %%A in ("%TDI_SOLDIR%") do set TDI_SOLDIR=%%~fA
 
 rem Create the directory if it does not exist
 if not exist "%TDI_SOLDIR%" mkdir "%TDI_SOLDIR%"
@@ -41,10 +43,10 @@ set PATH=%TDI_SOLDIR%\libs;%PATH%
 rem Take the supported env variables and pass them to Java program
 
 rem Log4j2 configuration file
-set LOG_4J="-Dlog4j2.configurationFile=file:///%TDI_SOLDIR:\=/%/etc/log4j2.xml"
+set LOG_4J=-Dlog4j2.configurationFile=file:///%TDI_SOLDIR:\=/%/etc/log4j2.xml
 
 rem Java Util Logging configuration
-set JAVA_LOGGING="-Djava.util.logging.config.file=%TDI_SOLDIR%\etc\logging.properties"
+set JAVA_LOGGING=-Djava.util.logging.config.file=%TDI_SOLDIR%\etc\logging.properties
 
 set ENV_VARIABLES=%LOG_4J% %JAVA_LOGGING%
 set JMX=-Dcom.sun.management.jmxremote=false -Dcom.sun.management.jmxremote.local.only=true -Dcom.sun.management.jmxremote.host=localhost
