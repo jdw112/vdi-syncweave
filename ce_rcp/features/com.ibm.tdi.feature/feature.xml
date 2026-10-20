@@ -195,6 +195,16 @@
    <plugin id="bcprov"                         download-size="0" install-size="0" version="0.0.0" unpack="false"/>
    <plugin id="bcpg"                           download-size="0" install-size="0" version="0.0.0" unpack="false"/>
    <plugin id="bcutil"                         download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+   <plugin id="bcpkix"                         download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+
+   <!-- EGit / JGit third-party dependencies (EGit features do not include these) -->
+   <plugin id="com.googlecode.javaewah.JavaEWAH"          download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+   <plugin id="org.apache.commons.commons-codec"          download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+   <plugin id="org.apache.commons.commons-compress"       download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+   <plugin id="org.apache.httpcomponents.httpclient"      download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+   <plugin id="org.apache.httpcomponents.httpcore"        download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+   <plugin id="org.apache.sshd.osgi"                      download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+   <plugin id="org.apache.sshd.sftp"                      download-size="0" install-size="0" version="0.0.0" unpack="false"/>
 
    <!-- Felix Gogo shell / SCR -->
    <plugin id="org.apache.felix.gogo.command"  download-size="0" install-size="0" version="0.0.0" unpack="false"/>

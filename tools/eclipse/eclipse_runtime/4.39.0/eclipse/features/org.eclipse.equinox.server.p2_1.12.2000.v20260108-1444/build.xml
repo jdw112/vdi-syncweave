@@ -104,17 +104,8 @@
 
 	<target name="rootFileslinux_gtk_x86_64">
 	</target>
-	<target name="rootFileswin32_win32_x86_64">
-	</target>
-	<target name="rootFilesmacosx_cocoa_x86_64">
-	</target>
-	<target name="rootFilesmacosx_cocoa_aarch64">
-	</target>
 	<target name="rootFilesgroup_group_group">
 		<antcall target="rootFileslinux_gtk_x86_64"/>
-		<antcall target="rootFileswin32_win32_x86_64"/>
-		<antcall target="rootFilesmacosx_cocoa_x86_64"/>
-		<antcall target="rootFilesmacosx_cocoa_aarch64"/>
 	</target>
 
 	<target name="zip.distribution" depends="init" description="Create a zip containing all the plug-ins and features for the feature: org.eclipse.equinox.server.p2.">
@@ -172,7 +163,7 @@
 	</target>
 
 	<target name="refresh" depends="init" if="eclipse.running" description="Refresh this folder.">
-		<eclipse.convertPath fileSystemPath="/home/sunil/syncweave_build/SyncWeave/tools/eclipse/eclipse_runtime/4.39.0/eclipse/features/org.eclipse.equinox.server.p2_1.12.2000.v20260108-1444/" property="resourcePath"/>
+		<eclipse.convertPath fileSystemPath="/home/user/vdi-syncweave/tools/eclipse/eclipse_runtime/4.39.0/eclipse/features/org.eclipse.equinox.server.p2_1.12.2000.v20260108-1444/" property="resourcePath"/>
 		<eclipse.refreshLocal resource="${resourcePath}" depth="infinite"/>
 		<antcall target="all.children">
 			<param name="target" value="refresh"/>

@@ -85,6 +85,11 @@
       <feature id="org.eclipse.e4.rcp"/>
       <feature id="org.eclipse.e4.core.tools.feature"/>
       <feature id="org.eclipse.equinox.server.p2"/>
+      <feature id="org.eclipse.egit"/>
+      <feature id="org.eclipse.jgit"/>
+      <feature id="org.eclipse.jgit.gpg.bc"/>
+      <feature id="org.eclipse.jgit.http.apache"/>
+      <feature id="org.eclipse.jgit.ssh.apache"/>
 
       <feature id="org.eclipse.help.nls1"/>
       <feature id="org.eclipse.jdt.nls1"/>
