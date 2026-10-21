@@ -1,0 +1,43 @@
+# Build image for SyncWeave, used by container_build.sh (macOS/Linux).
+#
+# Only public downloads are used, and each one is checksum-verified:
+#   - Red Hat UBI 9 base image (Docker Hub)
+#   - IBM Semeru OpenJDK 21 (GitHub releases)
+#   - Apache Ant (archive.apache.org)
+#
+# No RPMs are installed: the base image already has every tool the build
+# needs (sh, sed, tar, gzip, curl, sha256sum).
+#
+# The image is always linux/amd64, because the build runs
+# tools/tmsxml_to_properties/tmsxml_to_properties, an x86-64 binary.
+
+FROM docker.io/redhat/ubi9:9.6
+
+ARG JDK_URL=https://github.com/ibmruntimes/semeru21-binaries/releases/download/jdk-21.0.12.0/ibm-semeru-open-jdk_x64_linux_21.0.12.0.tar.gz
+ARG JDK_SHA256=e76357a3d469f7bc80ed20064f20ca773ef07ad140e3d44d39ba4ae640799ca2
+ARG ANT_VERSION=1.10.17
+ARG ANT_SHA512=a96ca6455ec9af5e702df7d1ed5a2ec1cfb381eac3e9a767ecb6be1706e826941045e8fd7ca663ba101bc47bfa18351f540dd27e9e7af57908ac78e65268eee7
+
+RUN set -eu; \
+    curl -fsSL -o /tmp/jdk.tar.gz "${JDK_URL}"; \
+    echo "${JDK_SHA256}  /tmp/jdk.tar.gz" | sha256sum -c -; \
+    mkdir -p /opt/jdk; \
+    tar -xzf /tmp/jdk.tar.gz -C /opt/jdk --strip-components=1; \
+    curl -fsSL -o /tmp/ant.tar.gz "https://archive.apache.org/dist/ant/binaries/apache-ant-${ANT_VERSION}-bin.tar.gz"; \
+    echo "${ANT_SHA512}  /tmp/ant.tar.gz" | sha512sum -c -; \
+    mkdir -p /opt/ant; \
+    tar -xzf /tmp/ant.tar.gz -C /opt/ant --strip-components=1; \
+    rm -f /tmp/jdk.tar.gz /tmp/ant.tar.gz; \
+    chmod -R a+rwX /opt/ant/lib
+
+ENV JAVA_HOME=/opt/jdk \
+    ANT_HOME=/opt/ant \
+    PATH=/opt/jdk/bin:/opt/ant/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    LC_ALL=C.utf8 \
+    LANG=C.utf8 \
+    TOOLS_HOME=/build/tools
+
+WORKDIR /build
+
+LABEL org.opencontainers.image.title="syncweave-build" \
+      org.opencontainers.image.description="SyncWeave build environment (Semeru JDK 21, Ant)"
