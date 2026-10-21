@@ -34,7 +34,7 @@ Ivy's download cache lives in the `syncweave-ivy-cache` volume, so later builds 
 | One-time setup | `podman machine init --cpus 4 --memory 8192 --disk-size 60` | None |
 | Free disk | About 10 GB for `images` | About 10 GB for `images` |
 
-Docker also works: set `CONTAINER_ENGINE=docker`.
+Docker also works, including Docker Desktop on macOS: the script uses it automatically when Podman is not installed, or set `CONTAINER_ENGINE=docker`. On Apple Silicon, turn on Settings > General > "Use Rosetta for x86_64/amd64 emulation on Apple Silicon".
 
 ### Apple Silicon
 
@@ -82,7 +82,7 @@ Note on the resolve check: `lib/ivy/` always contains 251 committed jars after a
 | `images` | Also `ship/install/SyncWeave-1.0.0-<platform>.zip` / `.tgz` (installer archives) |
 | `--build-tests` | `export/unit_tests/*.jar` and `ship/tests/unit_tests.zip` |
 
-All are git-ignored. On a 4-core Linux x86_64 machine, `package` takes about 9 minutes and `images` about 12, plus a few minutes for the first dependency download. Expect longer on Apple Silicon (emulation).
+All are git-ignored. Measured `package` times: about 9 minutes on a 4-core Linux x86_64 machine (`images` about 12), and 16 minutes on macOS with Docker Desktop. The first run adds a few minutes to build the image and download dependencies.
 
 ## Behind a proxy
 
