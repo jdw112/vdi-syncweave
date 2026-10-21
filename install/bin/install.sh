@@ -162,9 +162,19 @@ fi
 # On MacOS we also need to massage the location of the miadmin binary.
 eclipse_root=$dst/ce/eclipsece
 if [ `uname` = "Darwin" -a -d $eclipse_root ] ; then
-    mv $eclipse_root/MacOS/miadmin $eclipse_root/miadmin.app/Contents/MacOS
-    rm -rf $eclipse_root/MacOS
-    chmod 755 $eclipse_root/miadmin.app/Contents/MacOS/miadmin
+    app=$eclipse_root/miadmin.app
+    if [ -d $app ] ; then
+        mv $eclipse_root/MacOS/miadmin $app/Contents/MacOS
+        rm -rf $eclipse_root/MacOS
+    else
+        # The Eclipse 4.39 PDE build puts the bundle contents (Info.plist,
+        # MacOS/, Resources/) directly in eclipsece/.  Wrap them in
+        # miadmin.app so plugins/ sits next to the app, as ibmditk expects.
+        mkdir -p $app/Contents
+        mv $eclipse_root/Info.plist $eclipse_root/MacOS \
+            $eclipse_root/Resources $app/Contents/
+    fi
+    chmod 755 $app/Contents/MacOS/miadmin
 
     # We also want to correct the default workspace location.
     echo "osgi.instance.area.default=$dst/workspace" \
