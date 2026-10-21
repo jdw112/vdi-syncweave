@@ -11,7 +11,7 @@
 ## What the script does
 
 1. Starts the Podman machine on macOS if it is stopped.
-2. Builds the build image the first time, or whenever `build/container/Containerfile` changes. The image is Red Hat UBI 9 with IBM Semeru JDK 21.0.12 and Apache Ant 1.10.17, both checksum-verified. No other packages are installed.
+2. Builds the build image the first time, or whenever `build/container/Containerfile` changes. The image is Ubuntu 24.04 with IBM Semeru JDK 21.0.12 and Apache Ant 1.10.17 (both checksum-verified), plus `libxslt`, which the build's `tools/tmsxml_to_properties` binary needs.
 3. Mounts the repository at `/build` and runs `build/container/entrypoint.sh`, which:
     1. Puts `ivy/ivy.jar` on Ant's system classloader.
     2. For `images`: downloads the six platform JREs into `adks/ibm/jre/` (git-ignored) if missing, checking each SHA-256.
@@ -59,7 +59,7 @@ The build image is always `linux/amd64`, because the build runs `tools/tmsxml_to
 | `package` | `export/ce_eclipse/eclipsece-<platform>.zip` (IDE for Linux, Windows, macOS x86_64 and aarch64) |
 | `images` | Also `ship/install/SyncWeave-1.0.0-<platform>.zip` / `.tgz` (installer archives) |
 
-Both directories are git-ignored. Timings measured on a 4-core Linux x86_64 machine: `package` about 9 minutes, `images` about 12 minutes, plus a few minutes for the first dependency download.
+Both directories are git-ignored. On a 4-core Linux x86_64 machine, `package` takes about 9 minutes and `images` about 12, plus a few minutes for the first dependency download. Expect longer on Apple Silicon (emulation).
 
 ## Behind a proxy
 
