@@ -90,8 +90,12 @@ log "ant ${BUILD_TARGETS} finished with exit code ${rc} in $(( ($(date +%s) - st
 if [ "${rc}" = "0" ]; then
     for dir in export/ce_eclipse ship/install; do
         if [ -d "${dir}" ]; then
-            echo "Outputs in ${dir}:"
-            find "${dir}" -maxdepth 1 -type f \( -name '*.zip' -o -name '*.tgz' \) -printf '  %f (%s bytes)\n'
+            files=$(find "${dir}" -maxdepth 1 -type f \( -name '*.zip' -o -name '*.tgz' \) \
+                -newermt "@${start}" -printf '  %f (%s bytes)\n')
+            if [ -n "${files}" ]; then
+                echo "Built in ${dir}:"
+                echo "${files}"
+            fi
         fi
     done
 fi
