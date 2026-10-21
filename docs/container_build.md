@@ -82,7 +82,7 @@ Note on the resolve check: `lib/ivy/` always contains 251 committed jars after a
 | `images` | Also `ship/install/SyncWeave-1.0.0-<platform>.zip` / `.tgz` (installer archives) |
 | `--build-tests` | `export/unit_tests/*.jar` and `ship/tests/unit_tests.zip` |
 
-All are git-ignored. Measured `package` times: about 9 minutes on a 4-core Linux x86_64 machine (`images` about 12), and 16 minutes on macOS with Docker Desktop. The first run adds a few minutes to build the image and download dependencies.
+All are git-ignored. Measured `package` times: about 9 minutes on a 4-core Linux x86_64 machine (`images` about 12), and 16 minutes on macOS with Docker Desktop (`images` 17.5 minutes, including the six platform JREs). The first run adds a few minutes to build the image and download dependencies.
 
 ## Behind a proxy
 
