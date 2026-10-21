@@ -1,13 +1,15 @@
 #!/bin/bash
 #
-# Runs inside the build container (started by container_build.sh).
+# Runs inside the build container (started by build-SyncWeave.sh).
 # The repository is mounted at /build.
 #
-# Environment (set by container_build.sh):
+# Environment (set by build-SyncWeave.sh):
 #   BUILD_TARGETS  Ant targets to run, e.g. "package" or "images".
 #   BUILD_SHELL    1 = open an interactive shell instead of building.
 #   SKIP_RESOLVE   1 = skip "ant resolve rename_jars".
 #   WITH_JRES      1 = download the platform JREs even if not building images.
+#   BUILD_TESTS    1 = after a successful build, also run
+#                  "ant package_unit_tests zip_unit_tests".
 #   HOST_UID/GID   When set (Docker), files are handed back to this owner.
 
 set -uo pipefail
@@ -81,14 +83,26 @@ if [ "${SKIP_RESOLVE:-0}" != "1" ]; then
     done
 fi
 
+# bin/ folders left by Eclipse IDE compiles in the plugin projects conflict
+# with the PDE build. No tracked files live in them.
+log "Removing stale IDE bin/ folders from osgi/plugins and ce_rcp/plugins"
+find osgi/plugins ce_rcp/plugins -type d -name bin -prune -exec rm -rf {} + 2>/dev/null || true
+
 log "Running: ant ${BUILD_TARGETS}"
 start=$(date +%s)
 ant ${BUILD_TARGETS} 2>&1 | tee build.log
 rc=${PIPESTATUS[0]}
 log "ant ${BUILD_TARGETS} finished with exit code ${rc} in $(( ($(date +%s) - start) / 60 )) min (log: build.log)"
 
+if [ "${rc}" = "0" ] && [ "${BUILD_TESTS:-0}" = "1" ]; then
+    log "Running: ant package_unit_tests zip_unit_tests"
+    ant package_unit_tests zip_unit_tests 2>&1 | tee unit_tests_build.log
+    rc=${PIPESTATUS[0]}
+    log "Unit-test build finished with exit code ${rc} (log: unit_tests_build.log)"
+fi
+
 if [ "${rc}" = "0" ]; then
-    for dir in export/ce_eclipse ship/install; do
+    for dir in export/ce_eclipse ship/install ship/tests; do
         if [ -d "${dir}" ]; then
             files=$(find "${dir}" -maxdepth 1 -type f \( -name '*.zip' -o -name '*.tgz' \) \
                 -newermt "@${start}" -printf '  %f (%s bytes)\n')

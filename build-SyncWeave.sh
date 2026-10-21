@@ -1,12 +1,17 @@
 #!/bin/bash
 #
-# Build SyncWeave inside a container on macOS or Linux.
+# Build SyncWeave inside a container on macOS or Linux. The macOS/Linux
+# counterpart to build-SyncWeave.ps1 (Windows, AlmaLinux 9 under WSL).
 #
-# Usage: ./container_build.sh [options]
+# Usage: ./build-SyncWeave.sh [options]
 #
 #   -t, --target TARGETS   Ant target(s) to run (default: "package").
 #                          Use "images" for the full release build with
 #                          installer archives. Quote several: -t "clean package"
+#       --build-tests      After a successful build, also compile the unit
+#                          tests: ant package_unit_tests zip_unit_tests
+#       --repo PATH        SyncWeave repository (default: this script's
+#                          folder, or ./SyncWeave next to it).
 #       --shell            Open a shell in the build container instead.
 #       --rebuild-image    Rebuild the build image even if it exists.
 #       --skip-resolve     Skip "ant resolve rename_jars" (dependencies
@@ -26,22 +31,24 @@
 
 set -uo pipefail
 
-REPO=$(cd "$(dirname "$0")" && pwd)
-CONTAINER_DIR="${REPO}/build/container"
-
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+REPO=""
 TARGETS="package"
+BUILD_TESTS=0
 BUILD_SHELL=0
 REBUILD_IMAGE=0
 SKIP_RESOLVE=0
 WITH_JRES=0
 KEEP_CHANGES=0
 
-usage() { sed -n '3,26p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '3,31p' "$0" | sed 's/^# \{0,1\}//'; }
 die() { echo "Error: $*" >&2; exit 1; }
 
 while [ $# -gt 0 ]; do
     case "$1" in
         -t|--target) [ $# -ge 2 ] || die "$1 needs a value"; TARGETS="$2"; shift ;;
+        --build-tests) BUILD_TESTS=1 ;;
+        --repo) [ $# -ge 2 ] || die "$1 needs a value"; REPO="$2"; shift ;;
         --shell) BUILD_SHELL=1 ;;
         --rebuild-image) REBUILD_IMAGE=1 ;;
         --skip-resolve) SKIP_RESOLVE=1 ;;
@@ -54,6 +61,20 @@ while [ $# -gt 0 ]; do
 done
 
 command -v git >/dev/null 2>&1 || die "git is required"
+
+# Find the repository: --repo, this script's folder, or ./SyncWeave next to it
+# (the layout build-SyncWeave.ps1 uses).
+if [ -z "${REPO}" ]; then
+    if [ -f "${SCRIPT_DIR}/build.xml" ]; then
+        REPO="${SCRIPT_DIR}"
+    else
+        REPO="${SCRIPT_DIR}/SyncWeave"
+    fi
+fi
+[ -f "${REPO}/build.xml" ] || die "SyncWeave repository not found at ${REPO} (use --repo PATH)"
+REPO=$(cd "${REPO}" && pwd)
+CONTAINER_DIR="${REPO}/build/container"
+[ -f "${CONTAINER_DIR}/Containerfile" ] || die "${CONTAINER_DIR}/Containerfile not found; this branch has no container build"
 
 # Pick the container engine.
 ENGINE="${CONTAINER_ENGINE:-}"
@@ -146,6 +167,7 @@ echo "Repo:   ${REPO}"
     -v syncweave-ivy-cache:/root/.ivy2 \
     -e BUILD_TARGETS="${TARGETS}" \
     -e BUILD_SHELL="${BUILD_SHELL}" \
+    -e BUILD_TESTS="${BUILD_TESTS}" \
     -e SKIP_RESOLVE="${SKIP_RESOLVE}" \
     -e WITH_JRES="${WITH_JRES}" \
     -e HOST_UID="${HOST_UID}" \
