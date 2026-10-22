@@ -104,6 +104,7 @@
       <property name="osgi.hook.configurators.include" value="com.ibm.tdi.loader.TDIClassLoaderHook" />
       <property name="eclipse.p2.data.area" value="@config.dir/../p2" />
       <property name="eclipse.p2.profile" value="DefaultProfile" />
+      <property name="eclipse.e4.inject.javax.warning" value="false" />
    </configurations>
 
    <preferencesInfo>
