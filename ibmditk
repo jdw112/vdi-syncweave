@@ -106,10 +106,16 @@ if [ $UNAME_OS = "Darwin" ] ; then
 		*)         arch=x86_64 ;;
 	esac
 
+	# Dock icon: macOS reads the Windows .ico the installer puts in ce/.
+	dock_icon=""
+	if [ -f "$TDI_HOME_DIR/ce/ibmdi.ico" ] ; then
+		dock_icon="-Xdock:icon=$TDI_HOME_DIR/ce/ibmdi.ico"
+	fi
+
 	# Exit code 23 asks for a restart, which the native launcher would do.
 	rc=23
 	while [ $rc -eq 23 ] ; do
-		"$TDI_JAVAW_PROGRAM" -XstartOnFirstThread -Xdock:name=SyncWeave -Dcom.ibm.di.loader.IDILoader.path="$TDI_HOME_DIR" -Duser.dir="$TDI_SOLDIR" -jar "$startup_jar" -os macosx -ws cocoa -arch $arch "$@" $nosplash
+		"$TDI_JAVAW_PROGRAM" -XstartOnFirstThread -Xdock:name=SyncWeave ${dock_icon:+"$dock_icon"} -Dcom.ibm.di.loader.IDILoader.path="$TDI_HOME_DIR" -Duser.dir="$TDI_SOLDIR" -jar "$startup_jar" -os macosx -ws cocoa -arch $arch "$@" $nosplash
 		rc=$?
 	done
 else
