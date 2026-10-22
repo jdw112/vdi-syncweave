@@ -94,12 +94,24 @@ else
 fi
 
 if [ $UNAME_OS = "Darwin" ] ; then
-	# The macOS launcher changes the working directory to
-	# miadmin.app/Contents/MacOS.  The IDE copies the keystores and
-	# solution.properties into the directory that user.dir points to
-	# (Activator.loadResources) and then opens them relative to the working
-	# directory, so the two must match: do not pass -Duser.dir here.
-	"$TDI_HOME_DIR/ce/eclipsece/miadmin.app/Contents/MacOS/miadmin" "$@" $nosplash -vm "$TDI_JAVAW_PROGRAM" -vmargs -Dcom.ibm.di.loader.IDILoader.path="$TDI_HOME_DIR"
+	# The native macOS launcher (miadmin.app) always changes the working
+	# directory to miadmin.app/Contents/MacOS.  Start the Equinox launcher
+	# with Java directly instead, so the IDE runs in the solution directory
+	# as it does on Linux and Windows.  SWT on Cocoa needs
+	# -XstartOnFirstThread.
+	plugins="$TDI_HOME_DIR/ce/eclipsece/plugins"
+	startup_jar=`ls "$plugins"/org.eclipse.equinox.launcher_*.jar | tail -1`
+	case `ls -d "$plugins"/org.eclipse.equinox.launcher.cocoa.macosx.*` in
+		*aarch64*) arch=aarch64 ;;
+		*)         arch=x86_64 ;;
+	esac
+
+	# Exit code 23 asks for a restart, which the native launcher would do.
+	rc=23
+	while [ $rc -eq 23 ] ; do
+		"$TDI_JAVAW_PROGRAM" -XstartOnFirstThread -Xdock:name=SyncWeave -Dcom.ibm.di.loader.IDILoader.path="$TDI_HOME_DIR" -Duser.dir="$TDI_SOLDIR" -jar "$startup_jar" -os macosx -ws cocoa -arch $arch "$@" $nosplash
+		rc=$?
+	done
 else
 	"$TDI_HOME_DIR/ce/eclipsece/miadmin" "$@" $nosplash -vm "$TDI_JAVAW_PROGRAM" -vmargs -Dcom.ibm.di.loader.IDILoader.path="$TDI_HOME_DIR" -Duser.dir="$TDI_SOLDIR"
 fi
