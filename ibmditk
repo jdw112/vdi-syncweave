@@ -94,10 +94,20 @@ else
 fi
 
 if [ $UNAME_OS = "Darwin" ] ; then
-    miadmin="$TDI_HOME_DIR/ce/eclipsece/miadmin.app/Contents/MacOS/miadmin"
-else
-    miadmin="$TDI_HOME_DIR/ce/eclipsece/miadmin"
-fi
+	# The native macOS launcher changes its working directory to
+	# miadmin.app/Contents/MacOS, but the IDE opens solution.properties,
+	# idisrv.sth and the keystores relative to the solution directory.
+	# Start the Equinox launcher with Java directly so the working
+	# directory stays $TDI_SOLDIR.
+	plugins="$TDI_HOME_DIR/ce/eclipsece/plugins"
+	startup_jar=`ls "$plugins"/org.eclipse.equinox.launcher_*.jar | tail -1`
+	case `ls -d "$plugins"/org.eclipse.equinox.launcher.cocoa.macosx.*` in
+		*aarch64*) arch=aarch64 ;;
+		*)         arch=x86_64 ;;
+	esac
 
-"$miadmin" "$@" $nosplash -vm "$TDI_JAVAW_PROGRAM" -vmargs -Dcom.ibm.di.loader.IDILoader.path="$TDI_HOME_DIR" -Duser.dir="$TDI_SOLDIR"
+	"$TDI_JAVAW_PROGRAM" -XstartOnFirstThread -Xdock:name=Miadmin -Dcom.ibm.di.loader.IDILoader.path="$TDI_HOME_DIR" -Duser.dir="$TDI_SOLDIR" -jar "$startup_jar" -os macosx -ws cocoa -arch $arch "$@" $nosplash
+else
+	"$TDI_HOME_DIR/ce/eclipsece/miadmin" "$@" $nosplash -vm "$TDI_JAVAW_PROGRAM" -vmargs -Dcom.ibm.di.loader.IDILoader.path="$TDI_HOME_DIR" -Duser.dir="$TDI_SOLDIR"
+fi
 
