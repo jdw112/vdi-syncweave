@@ -173,13 +173,22 @@ if [ `uname` = "Darwin" -a -d $eclipse_root ] ; then
         mkdir -p $app/Contents
         mv $eclipse_root/Info.plist $eclipse_root/MacOS \
             $eclipse_root/Resources $app/Contents/
-        # Current Eclipse launchers only look for plugins/ in
-        # miadmin.app/Contents/Eclipse.  Point that at eclipsece/, so
-        # plugins/, features/ and configuration/ stay where tdiBackup.sh
-        # and applyUpdates.sh expect them.
-        ln -s ../.. $app/Contents/Eclipse
     fi
     chmod 755 $app/Contents/MacOS/miadmin
+
+    # The launcher reads miadmin.app/Contents/Eclipse/miadmin.ini, and
+    # resolves relative paths in it from Contents/MacOS.  Name the launcher
+    # library explicitly: on Apple Silicon the launcher's own search looks
+    # for org.eclipse.equinox.launcher.cocoa.macosx_* (no .aarch64), so it
+    # never finds the fragment without --launcher.library.
+    ini=$app/Contents/Eclipse/miadmin.ini
+    if [ ! -f $ini ] ; then
+        startup_jar=`cd $eclipse_root/plugins && ls -d org.eclipse.equinox.launcher_*.jar | tail -1`
+        launcher_lib=`cd $eclipse_root/plugins && ls -d org.eclipse.equinox.launcher.cocoa.macosx.*_* | tail -1`
+        mkdir -p $app/Contents/Eclipse
+        printf -- '-startup\n../../../plugins/%s\n--launcher.library\n../../../plugins/%s\n' \
+            "$startup_jar" "$launcher_lib" > $ini
+    fi
 
     # We also want to correct the default workspace location.
     echo "osgi.instance.area.default=$dst/workspace" \
