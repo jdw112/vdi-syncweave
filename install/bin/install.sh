@@ -169,10 +169,15 @@ if [ `uname` = "Darwin" -a -d $eclipse_root ] ; then
     else
         # The Eclipse 4.39 PDE build puts the bundle contents (Info.plist,
         # MacOS/, Resources/) directly in eclipsece/.  Wrap them in
-        # miadmin.app so plugins/ sits next to the app, as ibmditk expects.
+        # miadmin.app, the path ibmditk launches.
         mkdir -p $app/Contents
         mv $eclipse_root/Info.plist $eclipse_root/MacOS \
             $eclipse_root/Resources $app/Contents/
+        # Current Eclipse launchers only look for plugins/ in
+        # miadmin.app/Contents/Eclipse.  Point that at eclipsece/, so
+        # plugins/, features/ and configuration/ stay where tdiBackup.sh
+        # and applyUpdates.sh expect them.
+        ln -s ../.. $app/Contents/Eclipse
     fi
     chmod 755 $app/Contents/MacOS/miadmin
 
