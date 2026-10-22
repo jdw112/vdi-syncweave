@@ -112,10 +112,22 @@ if [ $UNAME_OS = "Darwin" ] ; then
 		dock_icon="-Xdock:icon=$TDI_HOME_DIR/ce/ibmdi.ico"
 	fi
 
+	# The Dock labels a process outside an app bundle with its executable's
+	# file name, and ignores -Xdock:name for SWT applications.  Run a copy
+	# of java named SyncWeave, kept next to java so it finds the JRE.
+	java_cmd="$TDI_JAVAW_PROGRAM"
+	named_java="`dirname "$TDI_JAVAW_PROGRAM"`/SyncWeave"
+	if [ ! -x "$named_java" -o "$TDI_JAVAW_PROGRAM" -nt "$named_java" ] ; then
+		cp -p "$TDI_JAVAW_PROGRAM" "$named_java" 2>/dev/null
+	fi
+	if [ -x "$named_java" ] ; then
+		java_cmd="$named_java"
+	fi
+
 	# Exit code 23 asks for a restart, which the native launcher would do.
 	rc=23
 	while [ $rc -eq 23 ] ; do
-		"$TDI_JAVAW_PROGRAM" -XstartOnFirstThread -Xdock:name=SyncWeave ${dock_icon:+"$dock_icon"} -Dcom.ibm.di.loader.IDILoader.path="$TDI_HOME_DIR" -Duser.dir="$TDI_SOLDIR" -jar "$startup_jar" -os macosx -ws cocoa -arch $arch "$@" $nosplash
+		"$java_cmd" -XstartOnFirstThread -Xdock:name=SyncWeave ${dock_icon:+"$dock_icon"} -Dcom.ibm.di.loader.IDILoader.path="$TDI_HOME_DIR" -Duser.dir="$TDI_SOLDIR" -jar "$startup_jar" -os macosx -ws cocoa -arch $arch "$@" $nosplash
 		rc=$?
 	done
 else
