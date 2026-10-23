@@ -162,9 +162,33 @@ fi
 # On MacOS we also need to massage the location of the miadmin binary.
 eclipse_root=$dst/ce/eclipsece
 if [ `uname` = "Darwin" -a -d $eclipse_root ] ; then
-    mv $eclipse_root/MacOS/miadmin $eclipse_root/miadmin.app/Contents/MacOS
-    rm -rf $eclipse_root/MacOS
-    chmod 755 $eclipse_root/miadmin.app/Contents/MacOS/miadmin
+    app=$eclipse_root/miadmin.app
+    if [ -d $app ] ; then
+        mv $eclipse_root/MacOS/miadmin $app/Contents/MacOS
+        rm -rf $eclipse_root/MacOS
+    else
+        # The Eclipse 4.39 PDE build puts the bundle contents (Info.plist,
+        # MacOS/, Resources/) directly in eclipsece/.  Wrap them in
+        # miadmin.app, the path ibmditk launches.
+        mkdir -p $app/Contents
+        mv $eclipse_root/Info.plist $eclipse_root/MacOS \
+            $eclipse_root/Resources $app/Contents/
+    fi
+    chmod 755 $app/Contents/MacOS/miadmin
+
+    # The launcher reads miadmin.app/Contents/Eclipse/miadmin.ini, and
+    # resolves relative paths in it from Contents/MacOS.  Name the launcher
+    # library explicitly: on Apple Silicon the launcher's own search looks
+    # for org.eclipse.equinox.launcher.cocoa.macosx_* (no .aarch64), so it
+    # never finds the fragment without --launcher.library.
+    ini=$app/Contents/Eclipse/miadmin.ini
+    if [ ! -f $ini ] ; then
+        startup_jar=`cd $eclipse_root/plugins && ls -d org.eclipse.equinox.launcher_*.jar | tail -1`
+        launcher_lib=`cd $eclipse_root/plugins && ls -d org.eclipse.equinox.launcher.cocoa.macosx.*_* | tail -1`
+        mkdir -p $app/Contents/Eclipse
+        printf -- '-startup\n../../../plugins/%s\n--launcher.library\n../../../plugins/%s\n' \
+            "$startup_jar" "$launcher_lib" > $ini
+    fi
 
     # We also want to correct the default workspace location.
     echo "osgi.instance.area.default=$dst/workspace" \
