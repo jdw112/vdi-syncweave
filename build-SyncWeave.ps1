@@ -545,11 +545,6 @@ if ($packagesToInstall.Count -gt 0) {
     Write-Ok "Installed: $pkgList"
 }
 
-# Ensure all shell scripts in build/scripts have LF line endings
-Write-Step "Ensuring shell scripts have LF line endings"
-Invoke-Wsl -Command "find '$wslRepoRoot/build/scripts' -name '*.sh' -exec dos2unix {} +"
-Write-Ok "Shell scripts normalised"
-
 # ---------------------------------------------------------------------------
 # NativeFs: rsync the source tree into the WSL2 native filesystem
 # ---------------------------------------------------------------------------
@@ -612,6 +607,28 @@ if ($NativeFs) {
 
     Write-Ok "Build root      : $wslRepoRoot (native ext4)"
 }
+
+# ---------------------------------------------------------------------------
+# Shell scripts must have LF line endings
+# ---------------------------------------------------------------------------
+# A Windows checkout (core.autocrlf=true) turns every shell script into CRLF.
+# They then fail in bash with "$'\r': command not found", both during the
+# build (build/scripts) and inside the product image built from this tree
+# (install/bin/install.sh -> install_server.sh, bin/*.sh, launchers).
+# Normalise every *.sh, plus extensionless files starting with "#!" in the
+# repo root, bin/ and tools/, in the tree that is about to be built.  By
+# default that is the ext4 copy, so the Windows checkout is not touched.
+# (No double quotes in the command: Windows PowerShell 5.1 mangles them when
+# passing arguments to wsl.exe.  Paths here are relative and space-free.)
+Write-Step "Ensuring shell scripts have LF line endings"
+$lfCmd = ("cd '$wslRepoRoot' && " +
+    "find . \( -path ./.git -o -path ./export -o -path ./ship \) -prune -o -type f -name '*.sh' -print0 | xargs -0 -r dos2unix -q && " +
+    "for f in ./* ./bin/* ./tools/*; do " +
+    "case `${f##*/} in *.*) continue ;; esac; " +
+    "[ -f `$f ] && head -c2 `$f | grep -q '^#!' && dos2unix -q `$f; " +
+    "done; true")
+Invoke-Wsl -Command $lfCmd
+Write-Ok "Shell scripts normalised"
 
 # ---------------------------------------------------------------------------
 # Resolve ANT_HOME dynamically
