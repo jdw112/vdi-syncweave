@@ -153,17 +153,24 @@
 
 .PARAMETER RunTests
     After a successful main build, compile the unit-test JARs and zip
-    (implies -BuildTests), unzip unit_tests.zip into TestInstallRoot,
+    (implies -BuildTests), unzip unit_tests.zip into a product install,
     stage the runtime JARs, run the JUnit suite via runTestSuite.sh,
     and report pass/fail.
     Logs: unit_tests_build.log and test_run.log in the repo root.
     Has no effect when the main build fails.
 
+    By default the product install is created from this build: the target is
+    forced to images, ship/install/SyncWeave-*-linux-x86_64.tgz is unpacked
+    and installed with its install_server.sh into /root/sb/test_install
+    inside the distro (recreated on every run).  This needs the Linux JRE in
+    adks/ibm/jre/ (downloaded by setup-jdk.sh).
+
 .PARAMETER TestInstallRoot
-    Existing product install root used by the unit tests, as a WSL path
-    (/opt/...) or a Windows path (C:\...), which is converted to /mnt/c/...
-    Required when -RunTests is set.  Must already contain bin/setupCmdLine.sh
-    (i.e. a real Linux product install - not just the build output directory).
+    Optional.  Run the unit tests against an existing product install instead
+    of a fresh one, as a WSL path (/opt/...) or a Windows path (C:\...),
+    which is converted to /mnt/c/...  Must already contain
+    bin/setupCmdLine.sh (i.e. a Linux product install - a Windows install,
+    which only has setupCmdLine.bat, cannot be used).
     Example: -TestInstallRoot /opt/IBM/TDI/V7.1
     Has no effect without -RunTests.
 
@@ -208,7 +215,7 @@
 
 .EXAMPLE
     # Build product + compile and run the full unit-test suite
-    .\build-SyncWeave.ps1 -RunTests -TestInstallRoot /tmp/sync_install/linux-x86_64/test_install
+    .\build-SyncWeave.ps1 -RunTests
 
 #>
 
@@ -366,10 +373,12 @@ if (-not (Get-Command 'wsl.exe' -ErrorAction SilentlyContinue)) {
         "Requires Windows 10 build 19041+ or Windows 11.")
 }
 
-# -RunTests needs a product install; fail fast before any setup work.
-if ($RunTests -and -not $TestInstallRoot) {
-    Stop-Build ("-RunTests requires -TestInstallRoot pointing to a product install that " +
-        "contains bin/setupCmdLine.sh.`nExample: -TestInstallRoot /opt/IBM/TDI/V7.1")
+# -RunTests without -TestInstallRoot installs this build into the distro,
+# which needs the images target (it produces the Linux installer).
+$AutoInstall = $RunTests -and -not $TestInstallRoot
+if ($AutoInstall -and $Target -ne 'images') {
+    Write-Warn "-RunTests installs this build to test it, so the target is switched from '$Target' to 'images'."
+    $Target = 'images'
 }
 # Accept a Windows path: check it here and hand bash its /mnt/<drive> form.
 if ($RunTests -and $TestInstallRoot -match '^[A-Za-z]:') {
@@ -380,6 +389,7 @@ if ($RunTests -and $TestInstallRoot -match '^[A-Za-z]:') {
     $TestInstallRoot = ConvertTo-WslPath $TestInstallRoot
 }
 if ($TestInstallRoot) { $TestInstallRoot = $TestInstallRoot.TrimEnd('/') }
+$TestInstallDir = '/root/sb/test_install'
 
 # Resolve and validate the repo root
 $resolved = Resolve-Path $RepoPath -ErrorAction SilentlyContinue
@@ -443,6 +453,12 @@ $jdkRelPath = if ($jdkWinPath.StartsWith($repoPrefix, [StringComparison]::Ordina
 } else { $null }
 $wslJavaHome = if ($jdkRelPath) { "$wslRepoRoot/$jdkRelPath" } else { ConvertTo-WslPath $jdkWinPath }
 Write-Ok "JAVA_HOME       : $wslJavaHome"
+
+# The Linux installer bundles the Linux JRE from adks/ibm/jre (setup-jdk.sh).
+if ($AutoInstall -and -not (Test-Path (Join-Path $repoRoot 'adks\ibm\jre\ibm-semeru-open-jre_x64_linux_*'))) {
+    Stop-Build ("-RunTests needs the Linux JRE in adks\ibm\jre\ to build the installer, and it is missing.`n" +
+        $jdkSetupHint + "`nOr pass -TestInstallRoot to test against an existing Linux install.")
+}
 
 # Clean local Eclipse/IDE compilation output directories to avoid PDE build conflicts
 Write-Step "Cleaning local IDE compilation directories (bin/ folders)"
@@ -509,10 +525,10 @@ if ($epelInstalled -ne 0) {
 
 # Packages: binary tools checked via 'which', libraries via 'rpm -q'
 # rsync is always installed - needed for -NativeFs, harmless otherwise.
-# unzip is needed by -RunTests to stage unit_tests.zip.
+# unzip, tar and gzip are needed by -RunTests to install the build and stage unit_tests.zip.
 $packagesToInstall = @()
 
-foreach ($pkg in @('ant', 'python3', 'dos2unix', 'rsync', 'unzip')) {
+foreach ($pkg in @('ant', 'python3', 'dos2unix', 'rsync', 'unzip', 'tar', 'gzip')) {
     $rc = Invoke-Wsl -Command "which $pkg" -AllowFail -Quiet
     if ($rc -ne 0) { $packagesToInstall += $pkg } else { Write-Skip "$pkg already installed" }
 }
@@ -745,8 +761,22 @@ if ($RunTests) {
     $scriptLines.Add('# -- Stage unit_tests.zip into install root + run suite -----------------------')
     $scriptLines.Add('echo ""')
     $scriptLines.Add("echo '==> Staging unit_tests.zip into install root'")
-    $scriptLines.Add("INSTALL_ROOT='$TestInstallRoot'")
     $scriptLines.Add("REPO='$wslRepoRoot'")
+    if ($AutoInstall) {
+        $scriptLines.Add("INSTALL_ROOT='$TestInstallDir'")
+        $scriptLines.Add('TEST_PKG="${INSTALL_ROOT}_pkg"')
+        $scriptLines.Add('echo "==> Installing this build into ${INSTALL_ROOT}"')
+        $scriptLines.Add('PKG=$(ls "${REPO}"/ship/install/SyncWeave-*-linux-x86_64.tgz 2>/dev/null | head -1)')
+        $scriptLines.Add('if [ -z "${PKG}" ]; then echo "ERROR: no ship/install/SyncWeave-*-linux-x86_64.tgz; the images build did not produce the Linux installer." >&2; exit 1; fi')
+        $scriptLines.Add('rm -rf "${INSTALL_ROOT}" "${TEST_PKG}"')
+        $scriptLines.Add('mkdir -p "${TEST_PKG}"')
+        $scriptLines.Add('tar -xzf "${PKG}" -C "${TEST_PKG}"')
+        $scriptLines.Add('# install_server.sh creates INSTALL_ROOT (it must not exist yet).')
+        $scriptLines.Add('"${TEST_PKG}/linux-x86_64/install_server.sh" "${INSTALL_ROOT}"')
+        $scriptLines.Add('rm -rf "${TEST_PKG}"')
+    } else {
+        $scriptLines.Add("INSTALL_ROOT='$TestInstallRoot'")
+    }
     $scriptLines.Add('IJARS="${INSTALL_ROOT}/jars"')
     $scriptLines.Add('# Verify the install root has bin/setupCmdLine.sh before proceeding.')
     $scriptLines.Add('if [ ! -f "${INSTALL_ROOT}/bin/setupCmdLine.sh" ]; then')

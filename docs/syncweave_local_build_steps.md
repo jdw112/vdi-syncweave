@@ -261,7 +261,7 @@ From the repository root in PowerShell:
 .\build-SyncWeave.ps1 -Clean             # delete export\ first (same as ant clean)
 .\build-SyncWeave.ps1 -MountedFs         # build over /mnt/c instead of ext4 (much slower, see below)
 .\build-SyncWeave.ps1 -BuildTests        # also build unit-test JARs and ship\tests\unit_tests.zip
-.\build-SyncWeave.ps1 -RunTests -TestInstallRoot /path/to/install   # also run the JUnit suite
+.\build-SyncWeave.ps1 -RunTests          # build images, install it in WSL, run the JUnit suite
 ```
 
 If script execution is blocked, run it with
@@ -279,6 +279,15 @@ The JDK is not hardcoded: the script uses the newest `jdk-*` directory under
 script change. Pass `-JavaHome <path>` to pick a different Linux JDK.
 
 Outputs land in the usual `export\` and `ship\` folders of the Windows clone.
+
+`-RunTests` needs a Linux product install, because `unit_tests/bin/runTestSuite.sh`
+loads `../../bin/setupCmdLine.sh`. By default the script builds `images`, unpacks
+`ship\install\SyncWeave-*-linux-x86_64.tgz` and installs it with
+`install_server.sh` into `/root/sb/test_install` inside the distro (recreated
+on every run), then stages `unit_tests` and the runtime JARs and runs the suite.
+This needs the Linux JRE that `setup-jdk.sh` puts in `adks\ibm\jre\`. To test
+against an existing Linux install instead, pass `-TestInstallRoot <path>`.
+Results are in `unit_tests_build.log` and `test_run.log` in the repo root.
 
 ---
 
