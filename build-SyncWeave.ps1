@@ -772,7 +772,15 @@ if ($RunTests) {
         $scriptLines.Add('mkdir -p "${TEST_PKG}"')
         $scriptLines.Add('tar -xzf "${PKG}" -C "${TEST_PKG}"')
         $scriptLines.Add('# install_server.sh creates INSTALL_ROOT (it must not exist yet).')
-        $scriptLines.Add('"${TEST_PKG}/linux-x86_64/install_server.sh" "${INSTALL_ROOT}"')
+        $scriptLines.Add('# Run it with sh -x and keep its output in test_install.log for diagnosis.')
+        $scriptLines.Add('set +e')
+        $scriptLines.Add('(cd "${TEST_PKG}/linux-x86_64" && sh -x ./install_server.sh "${INSTALL_ROOT}") 2>&1 | tee "${REPO}/test_install.log"')
+        $scriptLines.Add('INST_RC=${PIPESTATUS[0]}')
+        $scriptLines.Add('set -e')
+        $scriptLines.Add('if [ $INST_RC -ne 0 ] || [ ! -f "${INSTALL_ROOT}/bin/setupCmdLine.sh" ]; then')
+        $scriptLines.Add('    echo "ERROR: installing the build failed (exit $INST_RC). See test_install.log." >&2')
+        $scriptLines.Add('    exit 1')
+        $scriptLines.Add('fi')
         $scriptLines.Add('rm -rf "${TEST_PKG}"')
     } else {
         $scriptLines.Add("INSTALL_ROOT='$TestInstallRoot'")
@@ -874,6 +882,7 @@ if ($NativeFs) {
     }
     if ($RunTests) {
         Invoke-Wsl -Command "cp '$linuxRepoRoot/test_run.log' '$winRepoWsl/test_run.log' 2>/dev/null || true" -AllowFail
+        Invoke-Wsl -Command "cp '$linuxRepoRoot/test_install.log' '$winRepoWsl/test_install.log' 2>/dev/null || true" -AllowFail
     }
 
     if ($SkipSyncBack) {
