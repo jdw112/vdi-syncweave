@@ -94,12 +94,13 @@
 .PARAMETER SkipIvySetup
     Skip copying ivy.jar into ANT_HOME/lib.
     Use after the first successful run on a given machine.
-    Note: with -NativeFs the copy targets ANT_HOME/lib on the WSL2 native
-    filesystem (not /mnt/c).  Do not use -SkipIvySetup on a fresh distro
-    even if a prior non-NativeFs run already placed ivy.jar there.
+    ANT_HOME/lib lives inside the distro, so do not use -SkipIvySetup on a
+    fresh or re-imported distro.
 
 .PARAMETER NativeFs
-    Build on the WSL2 native Linux filesystem instead of the /mnt/c DrvFs mount.
+    Build on the WSL2 native Linux filesystem.  This is the DEFAULT; the
+    switch is kept so existing command lines still work.  Use -MountedFs to
+    build over /mnt/c instead.
 
     The repo is rsynced from the Windows clone into ~/sb/SyncWeave inside the
     distro before the build runs.  All I/O (Dojo minification, OSGi staging,
@@ -115,17 +116,23 @@
 
     rsync is installed automatically in the distro alongside the other packages.
 
-.PARAMETER SkipSync
-    Skip the rsync-in step when using -NativeFs.
+.PARAMETER MountedFs
+    Build directly over the /mnt/c DrvFs mount instead of the native ext4 copy.
+    Much slower (a full build can take well over an hour, against about
+    8 minutes on ext4), but nothing is copied into the distro.
+    Cannot be combined with -NativeFs.
 
-    Use this after the first successful -NativeFs build when you have not changed
+.PARAMETER SkipSync
+    Skip the rsync-in step (native filesystem mode).
+
+    Use this after the first successful build when you have not changed
     any source files and just want to re-run the build on the already-synced
     Linux copy.  The Linux repo at ~/sb/SyncWeave is used as-is.
 
-    Has no effect without -NativeFs.
+    Has no effect with -MountedFs.
 
 .PARAMETER SkipSyncBack
-    Skip syncing export/ back to the Windows repo after a -NativeFs build.
+    Skip syncing export/ back to the Windows repo after the build.
 
     Use this when you want to consume build outputs directly from the WSL2
     native filesystem via the UNC path instead of waiting for the sync:
@@ -133,7 +140,7 @@
         \\wsl$\AlmaLinux9\root\sb\SyncWeave\export\
 
     build.log is still copied back regardless of this switch.
-    Has no effect without -NativeFs.
+    Has no effect with -MountedFs.
 
 .PARAMETER BuildTests
     After a successful main build, compile the unit-test JARs and produce
@@ -163,7 +170,7 @@
     Delete export/ before building, like "ant clean" (and "ant developer" when
     combined with the default package target).  Done with rm -rf rather than
     "ant clean" because Ant cannot delete the deep dojox tree over /mnt/c
-    (MAX_PATH).  With -NativeFs the Linux copy's export/ is cleaned, and the
+    (MAX_PATH).  By default the Linux copy's export/ is cleaned, and the
     sync-back then mirrors the result to the Windows clone.
 
 .EXAMPLE
@@ -187,16 +194,12 @@
     .\build-SyncWeave.ps1 -Clean
 
 .EXAMPLE
-    # Fast build on WSL2 native filesystem (~3-4x faster)
-    .\build-SyncWeave.ps1 -NativeFs
-
-.EXAMPLE
     # Fastest mode - no sync back, access outputs via UNC path
-    .\build-SyncWeave.ps1 -NativeFs -SkipSyncBack
+    .\build-SyncWeave.ps1 -SkipSyncBack
 
 .EXAMPLE
-    # Fast full release build
-    .\build-SyncWeave.ps1 -NativeFs -Target images
+    # Build over /mnt/c instead of the ext4 copy (much slower)
+    .\build-SyncWeave.ps1 -MountedFs
 
 .EXAMPLE
     # Build product + compile unit-test JARs (no test run)
@@ -206,9 +209,6 @@
     # Build product + compile and run the full unit-test suite
     .\build-SyncWeave.ps1 -RunTests -TestInstallRoot /tmp/sync_install/linux-x86_64/test_install
 
-.EXAMPLE
-    # NativeFs build with unit tests
-    .\build-SyncWeave.ps1 -NativeFs -RunTests -TestInstallRoot /tmp/sync_install/linux-x86_64/test_install
 #>
 
 #Requires -Version 5.1
@@ -231,6 +231,8 @@ param(
     [switch] $SkipIvySetup,
 
     [switch] $NativeFs,
+
+    [switch] $MountedFs,
 
     [switch] $SkipSync,
 
@@ -279,6 +281,10 @@ function Stop-Build([string] $Message) {
     Write-Host ""
     exit 1
 }
+
+# Native ext4 build is the default; -MountedFs opts out.
+if ($NativeFs -and $MountedFs) { Stop-Build "-NativeFs and -MountedFs cannot be used together." }
+$NativeFs = [switch](-not $MountedFs)
 
 # ---------------------------------------------------------------------------
 # WSL interop note:

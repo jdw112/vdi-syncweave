@@ -259,7 +259,7 @@ From the repository root in PowerShell:
 .\build-SyncWeave.ps1                    # ant package
 .\build-SyncWeave.ps1 -Target images     # full release build
 .\build-SyncWeave.ps1 -Clean             # delete export\ first (same as ant clean)
-.\build-SyncWeave.ps1 -NativeFs          # build on ext4 inside WSL (typically 3-4x faster), outputs synced back
+.\build-SyncWeave.ps1 -MountedFs         # build over /mnt/c instead of ext4 (much slower, see below)
 .\build-SyncWeave.ps1 -BuildTests        # also build unit-test JARs and ship\tests\unit_tests.zip
 .\build-SyncWeave.ps1 -RunTests -TestInstallRoot /path/to/install   # also run the JUnit suite
 ```
@@ -269,12 +269,16 @@ If script execution is blocked, run it with
 Run `Get-Help .\build-SyncWeave.ps1 -Full` for all options (`-RepoPath`,
 `-JavaHome`, `-DistroName`, `-SkipResolve`, `-SkipIvySetup`, `-SkipSync`, `-SkipSyncBack`).
 
+By default the script rsyncs the clone to ext4 inside WSL (`/root/sb/SyncWeave`),
+builds there, and syncs `export\` (and `ship\` for `images`) back to Windows.
+A full `images` build takes about 8 minutes this way. Building directly over
+`/mnt/c` with `-MountedFs` is far slower (a test run was stopped after an hour).
+
 The JDK is not hardcoded: the script uses the newest `jdk-*` directory under
 `adks\ibm\jdk\` (where `setup-jdk.sh` puts it), so a JDK version bump needs no
 script change. Pass `-JavaHome <path>` to pick a different Linux JDK.
 
 Outputs land in the usual `export\` and `ship\` folders of the Windows clone.
-With `-NativeFs`, the working copy inside the distro is `/root/sb/SyncWeave`.
 
 ---
 
