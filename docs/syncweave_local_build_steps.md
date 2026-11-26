@@ -266,7 +266,11 @@ From the repository root in PowerShell:
 If script execution is blocked, run it with
 `powershell -ExecutionPolicy Bypass -File .\build-SyncWeave.ps1`.
 Run `Get-Help .\build-SyncWeave.ps1 -Full` for all options (`-RepoPath`,
-`-DistroName`, `-SkipResolve`, `-SkipIvySetup`, `-SkipSync`, `-SkipSyncBack`).
+`-JavaHome`, `-DistroName`, `-SkipResolve`, `-SkipIvySetup`, `-SkipSync`, `-SkipSyncBack`).
+
+The JDK is not hardcoded: the script uses the newest `jdk-*` directory under
+`adks\ibm\jdk\` (where `setup-jdk.sh` puts it), so a JDK version bump needs no
+script change. Pass `-JavaHome <path>` to pick a different Linux JDK.
 
 Outputs land in the usual `export\` and `ship\` folders of the Windows clone.
 With `-NativeFs`, the working copy inside the distro is `/root/sb/SyncWeave`.

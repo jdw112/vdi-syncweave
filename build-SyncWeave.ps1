@@ -73,6 +73,14 @@
     - package : compile + OSGi bundles + CE RCP zips.  Faster, no javadoc.
     - images  : everything in package plus javadoc, installer zips, ship/ tree.
 
+.PARAMETER JavaHome
+    JDK to build with, as a Windows path (absolute, or relative to the repo
+    root).  It must be a Linux JDK, because the build runs inside WSL.
+    Default: auto-detected under adks\ibm\jdk\ (where setup-jdk.sh puts it).
+    The script picks the jdk-* directory with the highest version, so a JDK
+    bump in setup-jdk.sh needs no change here.
+    Example: -JavaHome adks\ibm\jdk\jdk-21.0.13+11
+
 .PARAMETER DistroName
     Name of the WSL distro to use.  Default: AlmaLinux9.
     Must already be imported (see SETUP above).
@@ -198,6 +206,8 @@ param(
     [string] $Target = 'package',
 
     [string] $DistroName = 'AlmaLinux9',
+
+    [string] $JavaHome = '',
 
     [switch] $SkipResolve,
 
@@ -333,20 +343,61 @@ if (-not $repoRoot -or -not (Test-Path (Join-Path $repoRoot 'build.xml'))) {
 }
 
 $wslRepoRoot  = ConvertTo-WslPath $repoRoot
-$wslJavaHome  = "$wslRepoRoot/adks/ibm/jdk/jdk-21.0.12+8"
 $wslToolsHome = "$wslRepoRoot/tools"
 $wslIvySrc    = "$wslRepoRoot/ivy/ivy.jar"
 
 Write-Ok "Repository root : $repoRoot"
 Write-Ok "WSL mount path  : $wslRepoRoot"
 
+# ---------------------------------------------------------------------------
+# Locate the JDK
+# ---------------------------------------------------------------------------
 # The bundled JDK is not in git; setup-jdk.sh downloads it into adks/ibm/jdk/.
-if (-not (Test-Path (Join-Path $repoRoot 'adks\ibm\jdk\jdk-21.0.12+8\bin'))) {
-    Write-Error ("Bundled JDK not found at adks\ibm\jdk\jdk-21.0.12+8.`n" +
-        "Download it once from inside the distro, for example:`n" +
-        "  wsl -d $DistroName --cd `"$repoRoot`" -- bash -c 'dnf install -y wget tar gzip && bash <(tr -d \\r < setup-jdk.sh)'")
-    exit 1
+# The version is not hardcoded: pick the highest jdk-* directory there (an old
+# one can linger after a JDK bump), or use -JavaHome.
+
+$jdkSetupHint = ("Download it once from inside the distro, for example:`n" +
+    "  wsl -d $DistroName --cd `"$repoRoot`" -- bash -c 'dnf install -y wget tar gzip && bash <(tr -d \\r < setup-jdk.sh)'")
+
+# Sort key for names like jdk-21.0.12+8: numeric parts compared as numbers.
+function Get-JdkSortKey([string] $Name) {
+    $nums = [regex]::Matches($Name, '\d+') | ForEach-Object { '{0:D6}' -f [int]$_.Value }
+    return ($nums -join '.')
 }
+
+if ($JavaHome) {
+    $jdkPath = if ([System.IO.Path]::IsPathRooted($JavaHome)) { $JavaHome } else { Join-Path $repoRoot $JavaHome }
+    $jdkResolved = Resolve-Path $jdkPath -ErrorAction SilentlyContinue
+    if (-not $jdkResolved -or -not (Test-Path (Join-Path $jdkResolved.Path 'bin\java'))) {
+        Write-Error "-JavaHome '$JavaHome' is not a Linux JDK (bin/java not found under $jdkPath)."
+        exit 1
+    }
+    $jdkWinPath = $jdkResolved.Path
+} else {
+    $jdkRoot = Join-Path $repoRoot 'adks\ibm\jdk'
+    $jdkDirs = @(Get-ChildItem -Path $jdkRoot -Directory -Filter 'jdk-*' -ErrorAction SilentlyContinue |
+        Where-Object { Test-Path (Join-Path $_.FullName 'bin\java') } |
+        Sort-Object { Get-JdkSortKey $_.Name } -Descending)
+    if ($jdkDirs.Count -eq 0) {
+        Write-Error ("No JDK found under adks\ibm\jdk\ (expected a jdk-* directory with bin/java).`n" +
+            $jdkSetupHint + "`nOr point at a Linux JDK with -JavaHome <path>.")
+        exit 1
+    }
+    if ($jdkDirs.Count -gt 1) {
+        Write-Warn ("Several JDKs under adks\ibm\jdk\: " + (($jdkDirs | ForEach-Object Name) -join ', ') +
+            ". Using the newest, $($jdkDirs[0].Name). Pass -JavaHome to choose another.")
+    }
+    $jdkWinPath = $jdkDirs[0].FullName
+}
+
+# Keep the JDK path relative to the repo when it is inside it, so -NativeFs
+# can repoint it at the Linux copy.
+$repoPrefix = $repoRoot.TrimEnd('\') + '\'
+$jdkRelPath = if ($jdkWinPath.StartsWith($repoPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+    $jdkWinPath.Substring($repoPrefix.Length).Replace('\', '/')
+} else { $null }
+$wslJavaHome = if ($jdkRelPath) { "$wslRepoRoot/$jdkRelPath" } else { ConvertTo-WslPath $jdkWinPath }
+Write-Ok "JAVA_HOME       : $wslJavaHome"
 
 # Clean local Eclipse/IDE compilation output directories to avoid PDE build conflicts
 Write-Step "Cleaning local IDE compilation directories (bin/ folders)"
@@ -497,7 +548,7 @@ if ($NativeFs) {
 
     # Repoint all build paths to the native Linux copy.
     $wslRepoRoot  = $linuxRepoRoot
-    $wslJavaHome  = "$wslRepoRoot/adks/ibm/jdk/jdk-21.0.12+8"
+    if ($jdkRelPath) { $wslJavaHome = "$wslRepoRoot/$jdkRelPath" }
     $wslToolsHome = "$wslRepoRoot/tools"
     $wslIvySrc    = "$wslRepoRoot/ivy/ivy.jar"
 
