@@ -258,6 +258,7 @@ From the repository root in PowerShell:
 ```powershell
 .\build-SyncWeave.ps1                    # ant package
 .\build-SyncWeave.ps1 -Target images     # full release build
+.\build-SyncWeave.ps1 -Clean             # delete export\ first (same as ant clean)
 .\build-SyncWeave.ps1 -NativeFs          # build on ext4 inside WSL (typically 3-4x faster), outputs synced back
 .\build-SyncWeave.ps1 -BuildTests        # also build unit-test JARs and ship\tests\unit_tests.zip
 .\build-SyncWeave.ps1 -RunTests -TestInstallRoot /path/to/install   # also run the JUnit suite

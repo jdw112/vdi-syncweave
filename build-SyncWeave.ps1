@@ -45,11 +45,13 @@
     AlmaLinux 9 cannot be installed via "wsl --install" (not in the Store).
     Run these commands once in PowerShell before using this script:
 
-    # 1. Download the AlmaLinux 9.8 WSL image (~200 MB)
-    Invoke-WebRequest `
-      -Uri "https://github.com/AlmaLinux/wsl-images/releases/download/v9.8.20260526.0/AlmaLinux-9.8_x64_20260526.0.wsl" `
-      -OutFile "$env:TEMP\AlmaLinux9.wsl" `
-      -UseBasicParsing
+    Running this script before the distro exists prints these commands with
+    the exact, tested image URL filled in ($AlmaImageUrl near the top of the
+    script body).  Releases: https://github.com/AlmaLinux/wsl-images/releases
+
+    # 1. Download the AlmaLinux 9 WSL image (~200 MB)
+    Invoke-WebRequest -Uri "<AlmaLinux 9 .wsl image URL>" `
+      -OutFile "$env:TEMP\AlmaLinux9.wsl" -UseBasicParsing
 
     # 2. Create a directory for the virtual disk (alongside other WSL distros)
     New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\WSL\AlmaLinux9"
@@ -59,7 +61,7 @@
 
     # 4. Verify
     wsl -d AlmaLinux9 -- cat /etc/redhat-release
-    # Expected: AlmaLinux release 9.8 (Midnight Oncilla)
+    # Expected: AlmaLinux release 9.x
 
   -----------------------------------------------------------------------------
 
@@ -122,22 +124,6 @@
 
     Has no effect without -NativeFs.
 
-.EXAMPLE
-    # First-time build (run from the repository root)
-    .\build-SyncWeave.ps1
-
-.EXAMPLE
-    # Explicit repo path
-    .\build-SyncWeave.ps1 -RepoPath C:\work\vdi-syncweave
-
-.EXAMPLE
-    # Full release build
-    .\build-SyncWeave.ps1 -Target images
-
-.EXAMPLE
-    # Use a custom distro name
-    .\build-SyncWeave.ps1 -DistroName MyAlma9 -Target package
-
 .PARAMETER SkipSyncBack
     Skip syncing export/ back to the Windows repo after a -NativeFs build.
 
@@ -173,6 +159,33 @@
     Example: -TestInstallRoot /opt/IBM/TDI/V7.1
     Has no effect without -RunTests.
 
+.PARAMETER Clean
+    Delete export/ before building, like "ant clean" (and "ant developer" when
+    combined with the default package target).  Done with rm -rf rather than
+    "ant clean" because Ant cannot delete the deep dojox tree over /mnt/c
+    (MAX_PATH).  With -NativeFs the Linux copy's export/ is cleaned, and the
+    sync-back then mirrors the result to the Windows clone.
+
+.EXAMPLE
+    # First-time build (run from the repository root)
+    .\build-SyncWeave.ps1
+
+.EXAMPLE
+    # Explicit repo path
+    .\build-SyncWeave.ps1 -RepoPath C:\work\vdi-syncweave
+
+.EXAMPLE
+    # Full release build
+    .\build-SyncWeave.ps1 -Target images
+
+.EXAMPLE
+    # Use a custom distro name
+    .\build-SyncWeave.ps1 -DistroName MyAlma9 -Target package
+
+.EXAMPLE
+    # Clean build (same as "ant clean package")
+    .\build-SyncWeave.ps1 -Clean
+
 .EXAMPLE
     # Fast build on WSL2 native filesystem (~3-4x faster)
     .\build-SyncWeave.ps1 -NativeFs
@@ -198,6 +211,8 @@
     .\build-SyncWeave.ps1 -NativeFs -RunTests -TestInstallRoot /tmp/sync_install/linux-x86_64/test_install
 #>
 
+#Requires -Version 5.1
+
 [CmdletBinding()]
 param(
     [string] $RepoPath = $PSScriptRoot,
@@ -208,6 +223,8 @@ param(
     [string] $DistroName = 'AlmaLinux9',
 
     [string] $JavaHome = '',
+
+    [switch] $Clean,
 
     [switch] $SkipResolve,
 
@@ -231,6 +248,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Tested AlmaLinux 9 WSL image, printed in the setup instructions below.
+$AlmaImageUrl = 'https://github.com/AlmaLinux/wsl-images/releases/download/v9.8.20260526.0/AlmaLinux-9.8_x64_20260526.0.wsl'
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -249,6 +269,15 @@ function Write-Skip([string] $Message) {
 
 function Write-Warn([string] $Message) {
     Write-Host "    [!!] $Message" -ForegroundColor Yellow
+}
+
+# Print an error and stop with exit code 1.  (Write-Error would throw a raw
+# error record here because $ErrorActionPreference is 'Stop'.)
+function Stop-Build([string] $Message) {
+    Write-Host ""
+    Write-Host "  ERROR: $Message" -ForegroundColor Red
+    Write-Host ""
+    exit 1
 }
 
 # ---------------------------------------------------------------------------
@@ -270,22 +299,27 @@ function Write-Warn([string] $Message) {
 # Covers: system binaries, sbin, dnf/rpm, ant (installed to /usr/bin).
 $WslCleanPath = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 
-# Run a command inside the WSL distro.  Streams output live.
+# Run a command inside the WSL distro as root.  Streams output live.
 # Returns the exit code.  Throws on non-zero unless -AllowFail is set.
+# -Quiet discards the command's output inside bash, so that callers doing
+# "$rc = Invoke-Wsl ... -Quiet" get only the exit code back.  (Without it,
+# stdout such as "/usr/bin/ant" from "which ant" would become part of the
+# return value and "$rc -ne 0" would be true even on success.)
 function Invoke-Wsl {
     param(
         [Parameter(Mandatory)][string] $Command,
         [switch] $AllowFail,
         [switch] $Quiet
     )
-    if (-not $Quiet) {
-        Write-Verbose "    wsl -d $DistroName -- env -i PATH=$WslCleanPath HOME=/root bash --noprofile --norc -c '$Command'"
-    }
+    if ($Quiet) { $Command = "{ $Command ; } >/dev/null 2>&1" }
+    Write-Verbose "    wsl -d $DistroName -u root -- env -i PATH=$WslCleanPath HOME=/root bash --noprofile --norc -c '$Command'"
     # env -i starts bash with an empty environment (no inherited Windows PATH).
     # --noprofile --norc prevents WSL /etc/profile.d/ scripts from re-injecting
     # the Windows interop PATH (which contains spaces and breaks bash export).
     # We restore HOME so tools like ant can find ~/.ant/lib if needed.
-    & wsl -d $DistroName -- env '-i' "PATH=$WslCleanPath" 'HOME=/root' bash --noprofile --norc -c $Command
+    # -u root: the script installs packages and builds under /root, so it must
+    # not depend on the distro's default user.
+    & wsl -d $DistroName -u root -- env '-i' "PATH=$WslCleanPath" 'HOME=/root' bash --noprofile --norc -c $Command
     $rc = $LASTEXITCODE
     if ($rc -ne 0 -and -not $AllowFail) {
         throw "WSL command failed (exit $rc): $Command"
@@ -296,7 +330,7 @@ function Invoke-Wsl {
 # Run a command inside WSL and capture its stdout as a trimmed string.
 # Uses the same env -i / clean-PATH / --noprofile --norc isolation as Invoke-Wsl.
 function Get-WslOutput([string] $Command) {
-    $out = & wsl -d $DistroName -- env '-i' "PATH=$WslCleanPath" 'HOME=/root' bash --noprofile --norc -c $Command 2>$null
+    $out = & wsl -d $DistroName -u root -- env '-i' "PATH=$WslCleanPath" 'HOME=/root' bash --noprofile --norc -c "{ $Command ; } 2>/dev/null"
     return ($out -join '').Trim()
 }
 
@@ -319,27 +353,24 @@ Write-Step "Pre-flight checks"
 
 # wsl.exe must exist
 if (-not (Get-Command 'wsl.exe' -ErrorAction SilentlyContinue)) {
-    Write-Error ("wsl.exe not found on PATH.`n" +
+    Stop-Build ("wsl.exe not found on PATH.`n" +
         "WSL is not enabled or not installed.`n" +
         "Enable it with: wsl --install`n" +
         "Requires Windows 10 build 19041+ or Windows 11.")
-    exit 1
 }
 
 # -RunTests needs a product install; fail fast before any setup work.
 if ($RunTests -and -not $TestInstallRoot) {
-    Write-Error ("-RunTests requires -TestInstallRoot pointing to a product install that " +
+    Stop-Build ("-RunTests requires -TestInstallRoot pointing to a product install that " +
         "contains bin/setupCmdLine.sh.`nExample: -TestInstallRoot /opt/IBM/TDI/V7.1")
-    exit 1
 }
 
 # Resolve and validate the repo root
 $resolved = Resolve-Path $RepoPath -ErrorAction SilentlyContinue
 $repoRoot = if ($resolved) { $resolved.Path } else { $null }
 if (-not $repoRoot -or -not (Test-Path (Join-Path $repoRoot 'build.xml'))) {
-    Write-Error ("SyncWeave repository not found at: $RepoPath`n" +
+    Stop-Build ("SyncWeave repository not found at: $RepoPath`n" +
         "Pass the correct path with: -RepoPath <path-to-SyncWeave>")
-    exit 1
 }
 
 $wslRepoRoot  = ConvertTo-WslPath $repoRoot
@@ -369,8 +400,7 @@ if ($JavaHome) {
     $jdkPath = if ([System.IO.Path]::IsPathRooted($JavaHome)) { $JavaHome } else { Join-Path $repoRoot $JavaHome }
     $jdkResolved = Resolve-Path $jdkPath -ErrorAction SilentlyContinue
     if (-not $jdkResolved -or -not (Test-Path (Join-Path $jdkResolved.Path 'bin\java'))) {
-        Write-Error "-JavaHome '$JavaHome' is not a Linux JDK (bin/java not found under $jdkPath)."
-        exit 1
+        Stop-Build "-JavaHome '$JavaHome' is not a Linux JDK (bin/java not found under $jdkPath)."
     }
     $jdkWinPath = $jdkResolved.Path
 } else {
@@ -379,9 +409,8 @@ if ($JavaHome) {
         Where-Object { Test-Path (Join-Path $_.FullName 'bin\java') } |
         Sort-Object { Get-JdkSortKey $_.Name } -Descending)
     if ($jdkDirs.Count -eq 0) {
-        Write-Error ("No JDK found under adks\ibm\jdk\ (expected a jdk-* directory with bin/java).`n" +
+        Stop-Build ("No JDK found under adks\ibm\jdk\ (expected a jdk-* directory with bin/java).`n" +
             $jdkSetupHint + "`nOr point at a Linux JDK with -JavaHome <path>.")
-        exit 1
     }
     if ($jdkDirs.Count -gt 1) {
         Write-Warn ("Several JDKs under adks\ibm\jdk\: " + (($jdkDirs | ForEach-Object Name) -join ', ') +
@@ -432,7 +461,7 @@ if (-not $distroPresent) {
     Write-Host "  AlmaLinux 9 must be imported manually. Run these commands once:" -ForegroundColor Yellow
     Write-Host ""
     Write-Host '  Invoke-WebRequest `' -ForegroundColor White
-    Write-Host '    -Uri "https://github.com/AlmaLinux/wsl-images/releases/download/v9.8.20260526.0/AlmaLinux-9.8_x64_20260526.0.wsl" `' -ForegroundColor White
+    Write-Host "    -Uri `"$AlmaImageUrl`" ``" -ForegroundColor White
     Write-Host '    -OutFile "$env:TEMP\AlmaLinux9.wsl" -UseBasicParsing' -ForegroundColor White
     Write-Host '  New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\WSL\AlmaLinux9"' -ForegroundColor White
     Write-Host '  wsl --import AlmaLinux9 "$env:LOCALAPPDATA\WSL\AlmaLinux9" "$env:TEMP\AlmaLinux9.wsl"' -ForegroundColor White
@@ -509,9 +538,8 @@ if ($NativeFs) {
         # Verify the Linux copy exists before trusting it.
         $rc = Invoke-Wsl -Command "test -f '$linuxRepoRoot/build.xml'" -AllowFail -Quiet
         if ($rc -ne 0) {
-            Write-Error ("Linux repo not found at $linuxRepoRoot.`n" +
+            Stop-Build ("Linux repo not found at $linuxRepoRoot.`n" +
                 "Run without -SkipSync first to populate it.")
-            exit 1
         }
         Write-Step "NativeFs: skipping sync (-SkipSync)"
         Write-Skip "Using existing Linux copy at $linuxRepoRoot"
@@ -525,22 +553,20 @@ if ($NativeFs) {
         # Trailing slash on source = sync contents, not the directory name itself.
         # --delete removes files that no longer exist in the source.
         #
-        # --no-t      : do not sync timestamps. NTFS<->ext4 timestamps always differ,
-        #               so rsync -a without --no-t re-copies every file on every run.
-        #               With --no-t, rsync uses size to decide what changed.
-        # --size-only : skip files whose size matches. JARs/zips are stable binaries
-        #               that never change size; source edits always change size.
+        # -rlt               : recurse, keep symlinks and modification times.
+        #                      No -p/-o/-g: DrvFs (/mnt/c) owners and modes differ
+        #                      from ext4 and would make every file look changed.
+        # --modify-window=1    : treat mtimes within 1 s as equal (NTFS and ext4
+        #                      store times at different precision).
+        # Changed files are detected by size AND mtime, so an edit that keeps a
+        # file's size is still copied.  (--size-only would miss it.)
         #
-        # Excluded static trees (~40k files that never change - cuts scan 4-5x):
+        # Excluded:
         #   .git/objects/    : git pack files, not needed for builds
         #   export/          : build output, re-created by ant
-        #   static/dojo*     : Dojo UI tree, read-only at build time
-        Invoke-Wsl -Command ("rsync -a --no-t --size-only --delete --info=progress2 " +
+        Invoke-Wsl -Command ("rsync -rlt --modify-window=1 --delete --info=progress2 " +
             "--exclude='export/' " +
             "--exclude='.git/objects/' " +
-            "--exclude='osgi/plugins/com.ibm.di.ui.easyetl/static/dojo/' " +
-            "--exclude='osgi/plugins/com.ibm.di.ui.easyetl/static/dojox/' " +
-            "--exclude='osgi/plugins/com.ibm.di.ui.easyetl/static/dijit/' " +
             "'$wslRepoRoot/' '$linuxRepoRoot/'")
 
         Write-Ok "Sync complete"
@@ -569,11 +595,10 @@ Write-Step "Resolving ANT_HOME inside $DistroName"
 $wslAntHome = Get-WslOutput "export ANT_HOME=/usr/share/ant; ant --noconfig -diagnostics 2>/dev/null | grep '^ant.home ' | head -1 | sed 's/.*: //'"
 if (-not $wslAntHome) {
     # Fallback for standalone Ant tarballs: ant binary is in ANT_HOME/bin/
-    $wslAntHome = Get-WslOutput 'export JAVA_HOME=/usr/lib/jvm/default-java 2>/dev/null; dirname $(dirname $(readlink -f $(which ant)))'
+    $wslAntHome = Get-WslOutput 'dirname $(dirname $(readlink -f $(which ant)))'
 }
 if (-not $wslAntHome) {
-    Write-Error "Could not resolve ANT_HOME inside $DistroName. Is 'ant' installed?"
-    exit 1
+    Stop-Build "Could not resolve ANT_HOME inside $DistroName. Is 'ant' installed?"
 }
 Write-Ok "ANT_HOME = $wslAntHome"
 # Verify ant launches correctly with the bundled JDK (catches broken JAVA_HOME)
@@ -634,8 +659,16 @@ $scriptLines.Add('export PATH="$JAVA_HOME/bin:$ANT_HOME/bin:$PATH"')
 $scriptLines.Add('')
 $scriptLines.Add("cd '$wslRepoRoot'")
 
+# -Clean: same effect as "ant clean" (deletes export/), done in bash because
+# Ant's <delete> cannot remove the deep dojox tree over /mnt/c (MAX_PATH).
+if ($Clean) {
+    $scriptLines.Add('')
+    $scriptLines.Add('echo "==> Clean: deleting export/ (same as ant clean)"')
+    $scriptLines.Add("rm -rf '$wslRepoRoot/export'")
+}
+
 # MAX_PATH pre-clean: only needed on /mnt/c DrvFs. Native ext4 is fine.
-if (-not $NativeFs) {
+if (-not $NativeFs -and -not $Clean) {
     $scriptLines.Add('')
     $scriptLines.Add("# Pre-delete deep dojox tree that defeats Ant's <delete> via /mnt/ MAX_PATH.")
     $scriptLines.Add('# bash rm -rf handles arbitrarily deep paths; Ant Java File.delete() cannot.')
@@ -712,13 +745,22 @@ if ($RunTests) {
     $scriptLines.Add('chmod +x "${INSTALL_ROOT}/unit_tests/bin/"*.sh')
     $scriptLines.Add('# Stage runtime JARs needed by the test bootloader classpath scanner.')
     $scriptLines.Add('cp "${REPO}/export/osgi/embedded/com.ibm.di.tp.server.jar"                   "${IJARS}/"')
-    $scriptLines.Add('cp "${REPO}/lib/ivy/unittest/junit-dep.jar"                                   "${IJARS}/" 2>/dev/null || true')
-    $scriptLines.Add('cp "${REPO}/lib/ivy/unittest/hamcrest-all.jar"                                "${IJARS}/" 2>/dev/null || true')
-    $scriptLines.Add('cp "${REPO}/lib/ivy/unittest/hamcrest-core.jar"                               "${IJARS}/" 2>/dev/null || true')
-    $scriptLines.Add('cp "${REPO}/lib/ivy/unittest/easymock.jar"                                    "${IJARS}/" 2>/dev/null || true')
-    $scriptLines.Add('cp "${REPO}/lib/ivy/unittest/spring-test.jar"                                 "${IJARS}/" 2>/dev/null || true')
-    $scriptLines.Add('cp "${REPO}/export/osgi/runtime/org.eclipse.equinox.http.service.api.jar"    "${IJARS}/" 2>/dev/null || true')
-    $scriptLines.Add('cp "${REPO}/lib/ivy/axis-2/jaxb-runtime-2.3.6.jar"                           "${IJARS}/" 2>/dev/null || true')
+    $scriptLines.Add('# Matched by pattern so a dependency version bump does not break staging;')
+    $scriptLines.Add('# warn (instead of failing silently) when nothing matches.')
+    $scriptLines.Add('stage_jar() {')
+    $scriptLines.Add('    local found=0 f')
+    $scriptLines.Add('    for f in "$1"/$2; do')
+    $scriptLines.Add('        if [ -f "$f" ]; then cp "$f" "${IJARS}/"; found=1; fi')
+    $scriptLines.Add('    done')
+    $scriptLines.Add('    if [ $found -eq 0 ]; then echo "WARNING: no JAR matching $1/$2" >&2; fi')
+    $scriptLines.Add('}')
+    $scriptLines.Add('stage_jar "${REPO}/lib/ivy/unittest"     "junit-dep*.jar"')
+    $scriptLines.Add('stage_jar "${REPO}/lib/ivy/unittest"     "hamcrest-all*.jar"')
+    $scriptLines.Add('stage_jar "${REPO}/lib/ivy/unittest"     "hamcrest-core*.jar"')
+    $scriptLines.Add('stage_jar "${REPO}/lib/ivy/unittest"     "easymock*.jar"')
+    $scriptLines.Add('stage_jar "${REPO}/lib/ivy/unittest"     "spring-test*.jar"')
+    $scriptLines.Add('stage_jar "${REPO}/export/osgi/runtime" "org.eclipse.equinox.http.service.api*.jar"')
+    $scriptLines.Add('stage_jar "${REPO}/lib/ivy/axis-2"       "jaxb-runtime-*.jar"')
     $scriptLines.Add('')
     $scriptLines.Add('echo ""')
     $scriptLines.Add("echo '==> Running unit test suite'")
@@ -767,7 +809,7 @@ Write-Step "Running: $stepLabel"
 Write-Host ""
 
 $buildStart = Get-Date
-& wsl -d $DistroName -- bash /tmp/syncweave_build.sh
+& wsl -d $DistroName -u root -- env '-i' "PATH=$WslCleanPath" 'HOME=/root' bash --noprofile --norc /tmp/syncweave_build.sh
 $buildExitCode = $LASTEXITCODE
 $buildElapsed = [math]::Round(((Get-Date) - $buildStart).TotalSeconds)
 
@@ -806,13 +848,12 @@ if ($NativeFs) {
         Write-Step "NativeFs: syncing outputs back to Windows repo"
 
         if ($buildExitCode -eq 0) {
-            # --no-t --size-only: same as sync-in - avoids re-copying every file due to
-            # ext4->NTFS timestamp differences on every run.
+            # Same change detection as the sync-in (size and mtime, 1 s window).
             Write-Host "    Syncing export/ ..."
-            Invoke-Wsl -Command "rsync -a --no-t --size-only --delete --info=progress2 '$linuxRepoRoot/export/' '$winRepoWsl/export/'"
+            Invoke-Wsl -Command "rsync -rlt --modify-window=1 --delete --info=progress2 '$linuxRepoRoot/export/' '$winRepoWsl/export/'"
             if ($Target -eq 'images') {
                 Write-Host "    Syncing ship/ ..."
-                Invoke-Wsl -Command "rsync -a --no-t --size-only --delete --info=progress2 '$linuxRepoRoot/ship/' '$winRepoWsl/ship/'"
+                Invoke-Wsl -Command "rsync -rlt --modify-window=1 --delete --info=progress2 '$linuxRepoRoot/ship/' '$winRepoWsl/ship/'"
             }
             Write-Ok "Outputs synced to $repoRoot"
             Write-Host ""
