@@ -319,6 +319,10 @@ $WslCleanPath = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 # "$rc = Invoke-Wsl ... -Quiet" get only the exit code back.  (Without it,
 # stdout such as "/usr/bin/ant" from "which ant" would become part of the
 # return value and "$rc -ne 0" would be true even on success.)
+# NOTE: wsl.exe passes the command line through the distro's default shell
+# before bash -c runs it, so any $variable in $Command is expanded early
+# (usually to empty).  Keep $ out of these commands; logic that needs shell
+# variables belongs in the generated build script ($scriptLines).
 function Invoke-Wsl {
     param(
         [Parameter(Mandatory)][string] $Command,
@@ -615,20 +619,6 @@ if ($NativeFs) {
 # They then fail in bash with "$'\r': command not found", both during the
 # build (build/scripts) and inside the product image built from this tree
 # (install/bin/install.sh -> install_server.sh, bin/*.sh, launchers).
-# Normalise every *.sh, plus extensionless files starting with "#!" in the
-# repo root, bin/ and tools/, in the tree that is about to be built.  By
-# default that is the ext4 copy, so the Windows checkout is not touched.
-# (No double quotes in the command: Windows PowerShell 5.1 mangles them when
-# passing arguments to wsl.exe.  Paths here are relative and space-free.)
-Write-Step "Ensuring shell scripts have LF line endings"
-$lfCmd = ("cd '$wslRepoRoot' && " +
-    "find . \( -path ./.git -o -path ./export -o -path ./ship \) -prune -o -type f -name '*.sh' -print0 | xargs -0 -r dos2unix -q && " +
-    "for f in ./* ./bin/* ./tools/*; do " +
-    "case `${f##*/} in *.*) continue ;; esac; " +
-    "[ -f `$f ] && head -c2 `$f | grep -q '^#!' && dos2unix -q `$f; " +
-    "done; true")
-Invoke-Wsl -Command $lfCmd
-Write-Ok "Shell scripts normalised"
 
 # ---------------------------------------------------------------------------
 # Resolve ANT_HOME dynamically
@@ -651,7 +641,7 @@ if (-not $wslAntHome) {
 }
 Write-Ok "ANT_HOME = $wslAntHome"
 # Verify ant launches correctly with the bundled JDK (catches broken JAVA_HOME)
-Invoke-Wsl -Command "export JAVA_HOME='$wslJavaHome'; export ANT_HOME='$wslAntHome'; export PATH=`$JAVA_HOME/bin:`$PATH; ant --noconfig -version"
+Invoke-Wsl -Command "export JAVA_HOME='$wslJavaHome'; export ANT_HOME='$wslAntHome'; export PATH='$wslJavaHome/bin:$WslCleanPath'; ant --noconfig -version"
 
 # ---------------------------------------------------------------------------
 # Ivy one-time setup
@@ -707,6 +697,22 @@ $scriptLines.Add("export TOOLS_HOME='$wslToolsHome'")
 $scriptLines.Add('export PATH="$JAVA_HOME/bin:$ANT_HOME/bin:$PATH"')
 $scriptLines.Add('')
 $scriptLines.Add("cd '$wslRepoRoot'")
+
+# Normalise every *.sh, plus extensionless files starting with "#!" in the
+# repo root, bin/ and tools/, in the tree that is about to be built (by
+# default the ext4 copy, so the Windows checkout is not touched).  Git with
+# core.autocrlf=true checks these out with CRLF, which breaks install_server.sh.
+# This runs inside the generated script, not through Invoke-Wsl, because
+# wsl.exe hands -c commands to the distro's default shell first and that
+# shell expands $variables before bash sees them.
+$scriptLines.Add('')
+$scriptLines.Add('echo "==> Ensuring shell scripts have LF line endings"')
+$scriptLines.Add('find . \( -path ./.git -o -path ./export -o -path ./ship \) -prune -o -type f -name "*.sh" -print0 | xargs -0 -r dos2unix -q')
+$scriptLines.Add('for f in ./* ./bin/* ./tools/*; do')
+$scriptLines.Add('    case "${f##*/}" in *.*) continue ;; esac')
+$scriptLines.Add('    if [ -f "$f" ] && head -c2 "$f" | grep -q "^#!"; then dos2unix -q "$f"; fi')
+$scriptLines.Add('done')
+$scriptLines.Add('echo "    done"')
 
 # -Clean: same effect as "ant clean" (deletes export/), done in bash because
 # Ant's <delete> cannot remove the deep dojox tree over /mnt/c (MAX_PATH).
