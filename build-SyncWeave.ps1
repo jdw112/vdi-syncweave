@@ -160,9 +160,10 @@
     Has no effect when the main build fails.
 
 .PARAMETER TestInstallRoot
-    WSL path to an existing product install root used by the unit tests.
+    Existing product install root used by the unit tests, as a WSL path
+    (/opt/...) or a Windows path (C:\...), which is converted to /mnt/c/...
     Required when -RunTests is set.  Must already contain bin/setupCmdLine.sh
-    (i.e. a real product install - not just the build output directory).
+    (i.e. a real Linux product install - not just the build output directory).
     Example: -TestInstallRoot /opt/IBM/TDI/V7.1
     Has no effect without -RunTests.
 
@@ -370,6 +371,15 @@ if ($RunTests -and -not $TestInstallRoot) {
     Stop-Build ("-RunTests requires -TestInstallRoot pointing to a product install that " +
         "contains bin/setupCmdLine.sh.`nExample: -TestInstallRoot /opt/IBM/TDI/V7.1")
 }
+# Accept a Windows path: check it here and hand bash its /mnt/<drive> form.
+if ($RunTests -and $TestInstallRoot -match '^[A-Za-z]:') {
+    if (-not (Test-Path (Join-Path $TestInstallRoot 'bin\setupCmdLine.sh'))) {
+        Stop-Build ("-TestInstallRoot '$TestInstallRoot' has no bin\setupCmdLine.sh.`n" +
+            "It must be a Linux product install (a Windows install only has setupCmdLine.bat).")
+    }
+    $TestInstallRoot = ConvertTo-WslPath $TestInstallRoot
+}
+if ($TestInstallRoot) { $TestInstallRoot = $TestInstallRoot.TrimEnd('/') }
 
 # Resolve and validate the repo root
 $resolved = Resolve-Path $RepoPath -ErrorAction SilentlyContinue
