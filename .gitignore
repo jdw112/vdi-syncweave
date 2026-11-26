@@ -5,6 +5,8 @@
 cscope.out
 ncscope.out
 build.log
+unit_tests_build.log
+test_run.log
 
 # Build output - populated by the Ant/PDE headless build; never committed.
 export/
