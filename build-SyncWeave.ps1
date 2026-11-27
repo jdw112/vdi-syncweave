@@ -1,3 +1,7 @@
+# Copyright contributors to the SyncWeave project
+#
+# SPDX-License-Identifier: Apache-2.0
+
 <#
 .SYNOPSIS
     Build SyncWeave inside an AlmaLinux 9 WSL distro from Windows.
@@ -705,9 +709,12 @@ $scriptLines.Add("cd '$wslRepoRoot'")
 # This runs inside the generated script, not through Invoke-Wsl, because
 # wsl.exe hands -c commands to the distro's default shell first and that
 # shell expands $variables before bash sees them.
+# bin/servicemgr.sh and bin/tdiISCHome.sh are committed with CRLF and a
+# Linux build ships them that way, so they are left alone to keep the
+# output identical to a Linux build.
 $scriptLines.Add('')
 $scriptLines.Add('echo "==> Ensuring shell scripts have LF line endings"')
-$scriptLines.Add('find . \( -path ./.git -o -path ./export -o -path ./ship \) -prune -o -type f -name "*.sh" -print0 | xargs -0 -r dos2unix -q')
+$scriptLines.Add('find . \( -path ./.git -o -path ./export -o -path ./ship \) -prune -o -type f -name "*.sh" ! -path ./bin/servicemgr.sh ! -path ./bin/tdiISCHome.sh -print0 | xargs -0 -r dos2unix -q')
 $scriptLines.Add('for f in ./* ./bin/* ./tools/*; do')
 $scriptLines.Add('    case "${f##*/}" in *.*) continue ;; esac')
 $scriptLines.Add('    if [ -f "$f" ] && head -c2 "$f" | grep -q "^#!"; then dos2unix -q "$f"; fi')
